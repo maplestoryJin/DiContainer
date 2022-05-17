@@ -1,5 +1,7 @@
 package com.tdd.di;
 
+import com.tdd.di.ContainerTest.Component;
+import com.tdd.di.ContainerTest.Dependency;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
