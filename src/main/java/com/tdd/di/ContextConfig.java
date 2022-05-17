@@ -23,7 +23,7 @@ public class ContextConfig {
 
     public <Type> void bind(Class<Type> componentClass, Class<? extends Type> implementation) {
 
-        providers.put(componentClass, new ConstructorInjectionProvider<Type>(implementation));
+        providers.put(componentClass, new InjectionProvider<Type>(implementation));
     }
 
     public Context getContext() {
