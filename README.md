@@ -1,4 +1,5 @@
-# 依赖注入容器实战
+# 依赖注入容器实战 
+[![Java CI with Gradle](https://github.com/maplestoryJin/DiContainer/actions/workflows/gradle.yml/badge.svg?branch=main)](https://github.com/maplestoryJin/DiContainer/actions/workflows/gradle.yml)
 
 ## 任务列表
 * ~~无需构造的组件——组件实例~~
