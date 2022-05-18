@@ -13,12 +13,12 @@ import java.util.stream.Stream;
 import static java.util.Arrays.stream;
 import static java.util.stream.Stream.concat;
 
-class InjectionProvider<Type> implements ContextConfig.ComponentProvider<Type> {
-    private final Constructor<Type> injectConstructor;
+class InjectionProvider<T> implements ContextConfig.ComponentProvider<T> {
+    private final Constructor<T> injectConstructor;
     private final List<Field> injectFields;
     private final List<Method> injectMethods;
 
-    InjectionProvider(Class<? extends Type> component) {
+    InjectionProvider(Class<? extends T> component) {
         if (Modifier.isAbstract(component.getModifiers())) throw new IllegalComponentException();
         this.injectConstructor = getInjectConstructor(component);
         injectFields = getInjectFields(component);
@@ -34,9 +34,9 @@ class InjectionProvider<Type> implements ContextConfig.ComponentProvider<Type> {
     }
 
     @Override
-    public Type get(Context context) {
+    public T get(Context context) {
         try {
-            Type instance = this.injectConstructor.newInstance(toDependencies(context, this.injectConstructor));
+            T instance = this.injectConstructor.newInstance(toDependencies(context, this.injectConstructor));
             for (Field injectField : injectFields) {
                 injectField.set(instance, toDependency(context, injectField));
             }
@@ -105,12 +105,18 @@ class InjectionProvider<Type> implements ContextConfig.ComponentProvider<Type> {
     }
 
     private static Object toDependency(final Context context, final Field field) {
-        return context.get(field.getType()).get();
+        Type type = field.getGenericType();
+        if (type instanceof ParameterizedType) return context.get((ParameterizedType) type).get();
+        return context.get((Class<?>) type).get();
     }
 
     private static Object[] toDependencies(final Context context, final Executable executable) {
-        return stream(executable.getParameterTypes())
-                .map(p -> context.get(p).get()).toArray(Object[]::new);
+        return stream(executable.getParameters())
+                .map(p -> {
+                    Type type = p.getParameterizedType();
+                    if (type instanceof ParameterizedType) return context.get((ParameterizedType) type).get();
+                    return context.get(((Class<?>) type)).get();
+                }).toArray(Object[]::new);
     }
 
 

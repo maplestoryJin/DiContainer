@@ -2,6 +2,7 @@ package com.tdd.di;
 
 import com.tdd.di.ContainerTest.*;
 import jakarta.inject.Inject;
+import jakarta.inject.Provider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Named;
 import org.junit.jupiter.api.Nested;
@@ -10,6 +11,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -98,6 +101,40 @@ class ContextTest {
         @Test
         void should_return_empty_if_component_does_not_exist() {
             assertTrue(config.getContext().get(Component.class).isEmpty());
+        }
+
+        @Test
+        void should_retrieve_bind_type_as_provider() {
+            Component instance = new Component() {
+            };
+            config.bind(Component.class, instance);
+
+            ParameterizedType type = (ParameterizedType) new TypeLiteral<Provider<Component>>() {
+            }.getType();
+
+
+            Provider<Component> provider = (Provider<Component>) config.getContext().get(type).get();
+            assertSame(instance, provider.get());
+        }
+
+        @Test
+        void should_not_retrieve_bind_type_as_unsupported_container() {
+            Component instance = new Component() {
+            };
+            config.bind(Component.class, instance);
+
+            ParameterizedType type = (ParameterizedType) new TypeLiteral<List<Component>>() {
+            }.getType();
+
+
+            Optional provider = config.getContext().get(type);
+            assertFalse(provider.isPresent());
+        }
+
+        static abstract class TypeLiteral<T> {
+            public Type getType() {
+                return ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[0];
+            }
         }
     }
 

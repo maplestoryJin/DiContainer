@@ -27,10 +27,10 @@
   * ~~如果方法定义类型参数，则抛出异常~~
   * ~~依赖中应包含 Inject Method 声明的依赖~~
 * 对 Provider 类型的依赖
-  * 从容器中取得组件的 Provider（新增任务）
-  * 注入构造函数中可以声明对于 Provider 的依赖
-  * 注入字段中可以声明对于 Provider 的依赖
-  * 注入方法中可声明对于 Provider 的依赖
+  * ~~从容器中取得组件的 Provider（新增任务）~~
+  * ~~注入构造函数中可以声明对于 Provider 的依赖~~
+  * ~~注入字段中可以声明对于 Provider 的依赖~~
+  * ~~注入方法中可声明对于 Provider 的依赖~~
 * 自定义 Qualifier 的依赖
   * 注册组件时，可额外指定 Qualifier
   * 注册组件时，可从类对象上提取 Qualifier
