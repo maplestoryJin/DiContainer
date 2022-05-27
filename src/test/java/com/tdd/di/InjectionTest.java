@@ -2,6 +2,7 @@ package com.tdd.di;
 
 import com.tdd.di.ContainerTest.Component;
 import com.tdd.di.ContainerTest.Dependency;
+import com.tdd.di.Context.Ref;
 import jakarta.inject.Inject;
 import jakarta.inject.Provider;
 import org.junit.jupiter.api.BeforeEach;
@@ -9,7 +10,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -28,8 +28,8 @@ class InjectionTest {
     @BeforeEach
     void setUp() throws NoSuchFieldException {
         providerDependencyType = (ParameterizedType) InjectionTest.class.getDeclaredField("dependencyProvider").getGenericType();
-        when(context.get(eq(Dependency.class))).thenReturn(Optional.of(dependency));
-        when(context.get(eq(providerDependencyType))).thenReturn(Optional.of(dependencyProvider));
+        when(context.get(eq(Ref.of(Dependency.class)))).thenReturn(Optional.of(dependency));
+        when(context.get(eq(Ref.of(providerDependencyType)))).thenReturn(Optional.of(dependencyProvider));
     }
 
 
@@ -70,7 +70,7 @@ class InjectionTest {
             @Test
             void should_include_constructor_dependency_in_dependencies() {
                 InjectionProvider<InjectConstructor> provider = new InjectionProvider<>(InjectConstructor.class);
-                assertArrayEquals(new Type[]{Dependency.class}, provider.getDependencies().toArray(Type[]::new));
+                assertArrayEquals(new Ref[]{Ref.of(Dependency.class)}, provider.getDependencies().toArray(Ref[]::new));
 
             }
 
@@ -85,7 +85,7 @@ class InjectionTest {
             @Test
             void should_include_dependency_type_from_inject_constructor() {
                 InjectionProvider<ProviderInjectConstructor> provider = new InjectionProvider<>(ProviderInjectConstructor.class);
-                assertArrayEquals(new Type[]{providerDependencyType}, provider.getDependencies().toArray(Type[]::new));
+                assertArrayEquals(new Ref[]{Ref.of(providerDependencyType)}, provider.getDependencies().toArray(Ref[]::new));
 
             }
 
@@ -190,7 +190,7 @@ class InjectionTest {
             @Test
             void should_include_field_dependency_in_dependencies() {
                 InjectionProvider<ComponentWithInjectField> provider = new InjectionProvider<>(ComponentWithInjectField.class);
-                assertArrayEquals(new Type[]{Dependency.class}, provider.getDependencies().toArray(Type[]::new));
+                assertArrayEquals(new Ref[]{Ref.of(Dependency.class)}, provider.getDependencies().toArray(Ref[]::new));
             }
 
 
@@ -203,7 +203,7 @@ class InjectionTest {
             @Test
             void should_include_dependency_type_from_inject_field() {
                 InjectionProvider<ProviderInjectField> provider = new InjectionProvider<>(ProviderInjectField.class);
-                assertArrayEquals(new Type[]{providerDependencyType}, provider.getDependencies().toArray(Type[]::new));
+                assertArrayEquals(new Ref[]{Ref.of(providerDependencyType)}, provider.getDependencies().toArray(Ref[]::new));
 
             }
 
@@ -329,7 +329,7 @@ class InjectionTest {
             @Test
             void should_include_method_dependency_in_dependencies() {
                 InjectionProvider<ComponentWithInjectMethod> provider = new InjectionProvider<>(ComponentWithInjectMethod.class);
-                assertArrayEquals(new Type[]{Dependency.class}, provider.getDependencies().toArray(Type[]::new));
+                assertArrayEquals(new Ref[]{Ref.of(Dependency.class)}, provider.getDependencies().toArray(Ref[]::new));
             }
 
 
@@ -343,7 +343,7 @@ class InjectionTest {
             @Test
             void should_include_dependency_type_from_inject_method() {
                 InjectionProvider<ProviderInjectMethod> provider = new InjectionProvider<>(ProviderInjectMethod.class);
-                assertArrayEquals(new Type[]{providerDependencyType}, provider.getDependencies().toArray(Type[]::new));
+                assertArrayEquals(new Ref[]{Ref.of(providerDependencyType)}, provider.getDependencies().toArray(Ref[]::new));
 
             }
 

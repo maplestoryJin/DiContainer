@@ -50,10 +50,10 @@ class InjectionProvider<T> implements ContextConfig.ComponentProvider<T> {
     }
 
     @Override
-    public List<Type> getDependencies() {
+    public List<Context.Ref> getDependencies() {
         return concat(injectMethods.stream().flatMap(m -> stream(m.getParameters())).map(Parameter::getParameterizedType),
                 concat(injectFields.stream().map(Field::getGenericType),
-                        stream(injectConstructor.getParameters()).map(Parameter::getParameterizedType))).toList();
+                        stream(injectConstructor.getParameters()).map(Parameter::getParameterizedType))).map(Context.Ref::of).toList();
     }
 
     private static List<Method> getInjectMethods(Class<?> component) {
@@ -114,7 +114,7 @@ class InjectionProvider<T> implements ContextConfig.ComponentProvider<T> {
     }
 
     private static Object toDependency(Context context, Type type) {
-        return context.get(type).get();
+        return context.get(Context.Ref.of(type)).get();
     }
 
 

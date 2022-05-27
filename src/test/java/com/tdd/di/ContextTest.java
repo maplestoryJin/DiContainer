@@ -38,7 +38,7 @@ class ContextTest {
             Component instance = new Component() {
             };
             config.bind(Component.class, instance);
-            assertSame(instance, config.getContext().get(Component.class).get());
+            assertSame(instance, config.getContext().get(Context.Ref.of(Component.class)).get());
         }
 
         @ParameterizedTest(name = "supporting {0}")
@@ -48,7 +48,7 @@ class ContextTest {
             };
             config.bind(Dependency.class, dependency);
             config.bind(Component.class, componentType);
-            Optional<Component> component = config.getContext().get(Component.class);
+            Optional<Component> component = config.getContext().get(Context.Ref.of(Component.class));
             assertTrue(component.isPresent());
             assertSame(dependency, component.get().dependency());
         }
@@ -100,7 +100,7 @@ class ContextTest {
 
         @Test
         void should_return_empty_if_component_does_not_exist() {
-            assertTrue(config.getContext().get(Component.class).isEmpty());
+            assertTrue(config.getContext().get(Context.Ref.of(Component.class)).isEmpty());
         }
 
         @Test
@@ -113,7 +113,7 @@ class ContextTest {
             }.getType();
 
 
-            Provider<Component> provider = (Provider<Component>) config.getContext().get(type).get();
+            Provider<Component> provider = (Provider<Component>) config.getContext().get(Context.Ref.of(type)).get();
             assertSame(instance, provider.get());
         }
 
@@ -127,7 +127,7 @@ class ContextTest {
             }.getType();
 
 
-            Optional provider = config.getContext().get(type);
+            Optional provider = config.getContext().get(Context.Ref.of(type));
             assertFalse(provider.isPresent());
         }
 
@@ -351,7 +351,7 @@ class ContextTest {
         void should_not_throw_exception_if_cyclic_dependency_via_provider_constructor() {
             config.bind(Component.class, CyclicComponentInjectConstructor.class);
             config.bind(Dependency.class, CyclicDependencyProviderConstructor.class);
-            assertTrue(config.getContext().get(Dependency.class).isPresent());
+            assertTrue(config.getContext().get(Context.Ref.of(Dependency.class)).isPresent());
         }
     }
 }
