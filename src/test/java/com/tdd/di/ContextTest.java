@@ -11,8 +11,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -109,11 +107,8 @@ class ContextTest {
             };
             config.bind(Component.class, instance);
 
-            ParameterizedType type = (ParameterizedType) new TypeLiteral<Provider<Component>>() {
-            }.getType();
-
-
-            Provider<Component> provider = (Provider<Component>) config.getContext().get(Context.Ref.of(type)).get();
+            Provider<Component> provider = config.getContext().get(new Context.Ref<Provider<Component>>() {
+            }).get();
             assertSame(instance, provider.get());
         }
 
@@ -123,18 +118,9 @@ class ContextTest {
             };
             config.bind(Component.class, instance);
 
-            ParameterizedType type = (ParameterizedType) new TypeLiteral<List<Component>>() {
-            }.getType();
 
-
-            Optional provider = config.getContext().get(Context.Ref.of(type));
-            assertFalse(provider.isPresent());
-        }
-
-        static abstract class TypeLiteral<T> {
-            public Type getType() {
-                return ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[0];
-            }
+            assertFalse(config.getContext().get(new Context.Ref<List<Component>>() {
+            }).isPresent());
         }
     }
 
