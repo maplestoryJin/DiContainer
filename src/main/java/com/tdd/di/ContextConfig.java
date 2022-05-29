@@ -15,8 +15,10 @@ public class ContextConfig {
         providers.put(componentClass, context -> instance);
     }
 
-    public <Type> void bind(Class<Type> componentClass, Type instance, Annotation qualifier) {
-        components.put(new Component(componentClass, qualifier), context -> instance);
+    public <Type> void bind(Class<Type> componentClass, Type instance, Annotation... qualifiers) {
+        for (Annotation qualifier : qualifiers) {
+            components.put(new Component(componentClass, qualifier), context -> instance);
+        }
     }
 
     record Component(Class<?> type, Annotation qualifier) {
@@ -26,8 +28,10 @@ public class ContextConfig {
         providers.put(componentClass, new InjectionProvider<Type>(implementation));
     }
 
-    public <Type> void bind(Class<Type> componentClass, Class<? extends Type> implementation, Annotation qualifier) {
-        components.put(new Component(componentClass, qualifier), new InjectionProvider<Type>(implementation));
+    public <Type> void bind(Class<Type> componentClass, Class<? extends Type> implementation, Annotation... qualifiers) {
+        for (Annotation qualifier : qualifiers) {
+            components.put(new Component(componentClass, qualifier), new InjectionProvider<Type>(implementation));
+        }
     }
 
     public Context getContext() {
