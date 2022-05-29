@@ -98,6 +98,8 @@ class InjectionTest {
                 }
             }
 
+            // TODO inject with qualifier
+
         }
 
         @Nested
@@ -151,6 +153,8 @@ class InjectionTest {
                 public NoDefaultConstructorNorInjectConstructor(Dependency dependency) {
                 }
             }
+
+            // TODO throw illegal component if illegal qualifier given to inject point
 
         }
 
@@ -213,6 +217,8 @@ class InjectionTest {
 
             }
 
+            // TODO inject with qualifier
+
         }
 
         @Nested
@@ -228,6 +234,9 @@ class InjectionTest {
                 @Inject
                 final Dependency dependency = null;
             }
+
+
+            // TODO throw illegal component if illegal qualifier given to inject point
         }
     }
 
@@ -356,6 +365,7 @@ class InjectionTest {
                 }
             }
 
+            // TODO inject with qualifier
         }
 
         @Nested
@@ -371,6 +381,8 @@ class InjectionTest {
                 <T> void install(T t) {
                 }
             }
+
+            // TODO throw illegal component if illegal qualifier given to inject point
         }
 
 

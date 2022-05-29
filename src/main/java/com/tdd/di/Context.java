@@ -1,5 +1,6 @@
 package com.tdd.di;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Objects;
@@ -13,20 +14,22 @@ public interface Context {
          private Class<ComponentType> component;
          private Type container;
 
+         private Annotation qualifier;
+
          public static <ComponentType> Ref<ComponentType> of(Class<ComponentType> component) {
-             return new Ref<>(component);
+             return new Ref<>(component, null);
+         }
+         public static <ComponentType> Ref<ComponentType> of(Class<ComponentType> component, Annotation qualifier) {
+             return new Ref<>(component, qualifier);
          }
 
          public static Ref of(Type type) {
-             return new Ref(type);
+             return new Ref(type, null);
          }
 
-         Ref(Type type) {
+         Ref(Type type, Annotation qualifier) {
              init(type);
-         }
-
-         public Ref(Class<ComponentType> component) {
-             init(component);
+             this.qualifier = qualifier;
          }
 
          protected Ref() {
@@ -53,6 +56,10 @@ public interface Context {
 
          public Type getContainer() {
              return container;
+         }
+
+         public Annotation getQualifier() {
+             return qualifier;
          }
 
          @Override

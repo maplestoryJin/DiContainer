@@ -11,6 +11,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -121,6 +122,33 @@ class ContextTest {
 
             assertFalse(config.getContext().get(new Context.Ref<List<Component>>() {
             }).isPresent());
+        }
+
+        @Nested
+        class WithQualifier {
+            @Test
+            void should_bind_instance_with_qualifier() {
+                Component instance = new Component() {
+                };
+
+                config.bind(Component.class, instance, new NamedLiteral("ChosenOne"));
+                Component component = config.getContext().get(Context.Ref.of(Component.class, new NamedLiteral("ChosenOne"))).get();
+                assertSame(instance, component);
+            }
+
+            @Test
+            void should_bind_component_with_qualifier() {
+                Dependency dependency = new Dependency() {
+                };
+                config.bind(Dependency.class, dependency);
+                config.bind(Component.class, ConstructionInjection.class, new NamedLiteral("ChosenOne"));
+
+                Component chosenOne = config.getContext().get(Context.Ref.of(Component.class, new NamedLiteral("ChosenOne"))).get();
+                assertSame(dependency, chosenOne.dependency());
+            }
+
+            // TODO binding component with multi qualifiers
+            // TODO throw illegal component if illegal qualifier
         }
     }
 
@@ -338,6 +366,21 @@ class ContextTest {
             config.bind(Component.class, CyclicComponentInjectConstructor.class);
             config.bind(Dependency.class, CyclicDependencyProviderConstructor.class);
             assertTrue(config.getContext().get(Context.Ref.of(Dependency.class)).isPresent());
+        }
+
+        @Nested
+        class WithQualifier {
+            // TODO dependency missing if qualifier not match
+            // TODO check cyclic dependencies with qualifier
+        }
+    }
+
+
+    record NamedLiteral(String value) implements Annotation {
+
+        @Override
+        public Class<? extends Annotation> annotationType() {
+            return jakarta.inject.Named.class;
         }
     }
 }
