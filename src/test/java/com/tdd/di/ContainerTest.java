@@ -20,10 +20,10 @@ public class ContainerTest {
 
 
     static class DependencyDependsOnComponent implements Dependency {
-        private Component dependency;
+        private TestComponent dependency;
 
         @Inject
-        public DependencyDependsOnComponent(Component dependency) {
+        public DependencyDependsOnComponent(TestComponent dependency) {
             this.dependency = dependency;
         }
     }
@@ -39,16 +39,16 @@ public class ContainerTest {
     }
 
     static class AnotherDependencyDependsOnComponent implements AnotherDependency {
-        private Component component;
+        private TestComponent component;
 
         @Inject
-        public AnotherDependencyDependsOnComponent(Component component) {
+        public AnotherDependencyDependsOnComponent(TestComponent component) {
             this.component = component;
         }
     }
 
 
-    static class ComponentInjectWithInjectConstructor implements Component {
+    static class ComponentInjectWithInjectConstructor implements TestComponent {
         private Dependency dependency;
 
         @Inject
@@ -58,7 +58,7 @@ public class ContainerTest {
 
     }
 
-    public interface Component {
+    public interface TestComponent {
         default Dependency dependency() {
             return null;
         }

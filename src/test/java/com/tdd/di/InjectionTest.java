@@ -1,8 +1,7 @@
 package com.tdd.di;
 
-import com.tdd.di.ContainerTest.Component;
 import com.tdd.di.ContainerTest.Dependency;
-import com.tdd.di.Context.Ref;
+import com.tdd.di.ContainerTest.TestComponent;
 import jakarta.inject.Inject;
 import jakarta.inject.Provider;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,7 +36,7 @@ class InjectionTest {
     class ConstructorInjectionTest {
 
 
-        static class InjectConstructor implements Component {
+        static class InjectConstructor implements TestComponent {
             Dependency dependency;
 
             @Inject
@@ -55,7 +54,7 @@ class InjectionTest {
                 assertNotNull(instance);
             }
 
-            static class DefaultConstructor implements Component {
+            static class DefaultConstructor implements TestComponent {
                 public DefaultConstructor() {
                 }
             }
@@ -112,7 +111,7 @@ class InjectionTest {
                         new InjectionProvider<>(AbstractComponent.class));
             }
 
-            static abstract class AbstractComponent implements Component {
+            static abstract class AbstractComponent implements TestComponent {
                 @Inject
                 AbstractComponent() {
                 }
@@ -122,7 +121,7 @@ class InjectionTest {
             @Test
             void should_throw_exception_if_component_is_interface() {
                 assertThrows(IllegalComponentException.class, () ->
-                        new InjectionProvider<>(Component.class));
+                        new InjectionProvider<>(TestComponent.class));
             }
 
 
@@ -132,13 +131,13 @@ class InjectionTest {
             }
 
 
-            static class MultiInjectConstructors implements Component {
+            static class MultiInjectConstructors implements TestComponent {
                 @Inject
                 public MultiInjectConstructors(Dependency dependency) {
                 }
 
                 @Inject
-                public MultiInjectConstructors(Component component) {
+                public MultiInjectConstructors(TestComponent component) {
 
                 }
             }
@@ -149,7 +148,7 @@ class InjectionTest {
                 assertThrows(IllegalComponentException.class, () -> new InjectionProvider<>(NoDefaultConstructorNorInjectConstructor.class));
             }
 
-            static class NoDefaultConstructorNorInjectConstructor implements Component {
+            static class NoDefaultConstructorNorInjectConstructor implements TestComponent {
                 public NoDefaultConstructorNorInjectConstructor(Dependency dependency) {
                 }
             }
@@ -168,7 +167,7 @@ class InjectionTest {
         class Injection {
 
 
-            static class ComponentWithInjectField implements Component {
+            static class ComponentWithInjectField implements TestComponent {
                 @Inject
                 Dependency dependency;
             }

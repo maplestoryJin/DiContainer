@@ -8,64 +8,66 @@ import java.util.*;
 import static java.util.List.of;
 
 public class ContextConfig {
-    private final Map<Class<?>, ComponentProvider<?>> providers = new HashMap<>();
     private final Map<Component, ComponentProvider<?>> components = new HashMap<>();
 
     public <Type> void bind(Class<Type> componentClass, Type instance) {
-        providers.put(componentClass, context -> instance);
+        bindInstance(componentClass, instance, null);
     }
 
     public <Type> void bind(Class<Type> componentClass, Type instance, Annotation... qualifiers) {
         for (Annotation qualifier : qualifiers) {
-            components.put(new Component(componentClass, qualifier), context -> instance);
+            bindInstance(componentClass, instance, qualifier);
         }
     }
 
-    record Component(Class<?> type, Annotation qualifier) {
-    }
-
     public <Type> void bind(Class<Type> componentClass, Class<? extends Type> implementation) {
-        providers.put(componentClass, new InjectionProvider<Type>(implementation));
+        bindComponent(componentClass, implementation, null);
     }
 
     public <Type> void bind(Class<Type> componentClass, Class<? extends Type> implementation, Annotation... qualifiers) {
         for (Annotation qualifier : qualifiers) {
-            components.put(new Component(componentClass, qualifier), new InjectionProvider<Type>(implementation));
+            bindComponent(componentClass, implementation, qualifier);
         }
     }
 
+    private <Type> void bindInstance(Class<Type> componentClass, Type instance, Annotation qualifier) {
+        components.put(new Component(componentClass, qualifier), context -> instance);
+    }
+
+    private <Type> void bindComponent(Class<Type> componentClass, Class<? extends Type> implementation, Annotation qualifier) {
+        components.put(new Component(componentClass, qualifier), new InjectionProvider<Type>(implementation));
+    }
+
     public Context getContext() {
-        providers.keySet().forEach(component -> checkDependencies(component, new Stack<>()));
+        components.keySet().forEach(component -> checkDependencies(component, new Stack<>()));
 
         return new Context() {
 
             @Override
             public <ComponentType> Optional<ComponentType> get(Ref<ComponentType> ref) {
-                if (ref.getQualifier() != null) {
-                    return Optional.ofNullable(components.get(new Component(ref.getComponent(), ref.getQualifier()))).map(p -> ((ComponentType) p.get(this)));
-                }
                 if (ref.isContainer()) {
                     if (ref.getContainer() != Provider.class) return Optional.empty();
-                    return (Optional<ComponentType>) Optional.ofNullable(providers.get(ref.getComponent()))
+                    return (Optional<ComponentType>) Optional.ofNullable(components.get(ref.component()))
                             .map(p -> (Provider<Object>) () -> p.get(this));
                 }
-                return Optional.ofNullable(providers.get(ref.getComponent())).map(p -> ((ComponentType) p.get(this)));
+                return Optional.ofNullable(components.get(ref.component())).map(p -> ((ComponentType) p.get(this)));
+
             }
         };
     }
 
-    public void checkDependencies(Class<?> component, Stack<Class<?>> visiting) {
-        providers.get(component).getDependencies().forEach(dependency -> checkDependency(component, visiting, dependency));
+    public void checkDependencies(Component component, Stack<Class<?>> visiting) {
+        components.get(component).getDependencies().forEach(dependency -> checkDependency(component.type(), visiting, dependency));
     }
 
-    private void checkDependency(Class<?> component, Stack<Class<?>> visiting, Context.Ref ref) {
-        if (!providers.containsKey(ref.getComponent()))
-            throw new DependencyNotFoundException(ref.getComponent(), component);
+    private void checkDependency(Class<?> component, Stack<Class<?>> visiting, Ref ref) {
+        if (!components.containsKey(ref.component()))
+            throw new DependencyNotFoundException(ref.getComponentType(), component);
         if (!ref.isContainer()) {
-            if (visiting.contains(ref.getComponent()))
+            if (visiting.contains(ref.getComponentType()))
                 throw new CyclicDependenciesFoundException(visiting.stream().toList());
-            visiting.push(ref.getComponent());
-            checkDependencies(ref.getComponent(), visiting);
+            visiting.push(ref.getComponentType());
+            checkDependencies(ref.component(), visiting);
             visiting.pop();
         }
     }
@@ -73,7 +75,7 @@ public class ContextConfig {
     interface ComponentProvider<T> {
         T get(Context context);
 
-        default List<Context.Ref> getDependencies() {
+        default List<Ref> getDependencies() {
             return of();
         }
     }
