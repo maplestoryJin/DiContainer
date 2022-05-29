@@ -42,7 +42,7 @@ class ContextTest {
             TestComponent instance = new TestComponent() {
             };
             config.bind(TestComponent.class, instance);
-            assertSame(instance, config.getContext().get(Ref.of(TestComponent.class)).get());
+            assertSame(instance, config.getContext().get(ComponentRef.of(TestComponent.class)).get());
         }
 
         @ParameterizedTest(name = "supporting {0}")
@@ -52,7 +52,7 @@ class ContextTest {
             };
             config.bind(Dependency.class, dependency);
             config.bind(TestComponent.class, componentType);
-            Optional<TestComponent> component = config.getContext().get(Ref.of(TestComponent.class));
+            Optional<TestComponent> component = config.getContext().get(ComponentRef.of(TestComponent.class));
             assertTrue(component.isPresent());
             assertSame(dependency, component.get().dependency());
         }
@@ -104,7 +104,7 @@ class ContextTest {
 
         @Test
         void should_return_empty_if_component_does_not_exist() {
-            assertTrue(config.getContext().get(Ref.of(TestComponent.class)).isEmpty());
+            assertTrue(config.getContext().get(ComponentRef.of(TestComponent.class)).isEmpty());
         }
 
         @Test
@@ -113,7 +113,7 @@ class ContextTest {
             };
             config.bind(TestComponent.class, instance);
 
-            Provider<TestComponent> provider = config.getContext().get(new Ref<Provider<TestComponent>>() {
+            Provider<TestComponent> provider = config.getContext().get(new ComponentRef<Provider<TestComponent>>() {
             }).get();
             assertSame(instance, provider.get());
         }
@@ -125,7 +125,7 @@ class ContextTest {
             config.bind(TestComponent.class, instance);
 
 
-            assertFalse(config.getContext().get(new Ref<List<TestComponent>>() {
+            assertFalse(config.getContext().get(new ComponentRef<List<TestComponent>>() {
             }).isPresent());
         }
 
@@ -137,8 +137,8 @@ class ContextTest {
                 };
 
                 config.bind(TestComponent.class, instance, new NamedLiteral("ChosenOne"), new SkywalkerLiteral());
-                TestComponent chosenOne = config.getContext().get(Ref.of(TestComponent.class, new NamedLiteral("ChosenOne"))).get();
-                TestComponent skywalker = config.getContext().get(Ref.of(TestComponent.class, new SkywalkerLiteral())).get();
+                TestComponent chosenOne = config.getContext().get(ComponentRef.of(TestComponent.class, new NamedLiteral("ChosenOne"))).get();
+                TestComponent skywalker = config.getContext().get(ComponentRef.of(TestComponent.class, new SkywalkerLiteral())).get();
                 assertSame(instance, chosenOne);
                 assertSame(instance, skywalker);
             }
@@ -151,8 +151,8 @@ class ContextTest {
                 config.bind(Dependency.class, dependency);
                 config.bind(TestComponent.class, ConstructionInjection.class, new NamedLiteral("ChosenOne"), new SkywalkerLiteral());
 
-                TestComponent chosenOne = config.getContext().get(Ref.of(TestComponent.class, new NamedLiteral("ChosenOne"))).get();
-                TestComponent skywalker = config.getContext().get(Ref.of(TestComponent.class, new SkywalkerLiteral())).get();
+                TestComponent chosenOne = config.getContext().get(ComponentRef.of(TestComponent.class, new NamedLiteral("ChosenOne"))).get();
+                TestComponent skywalker = config.getContext().get(ComponentRef.of(TestComponent.class, new SkywalkerLiteral())).get();
                 assertSame(dependency, chosenOne.dependency());
                 assertSame(dependency, skywalker.dependency());
             }
@@ -385,7 +385,7 @@ class ContextTest {
         void should_not_throw_exception_if_cyclic_dependency_via_provider_constructor() {
             config.bind(TestComponent.class, CyclicComponentInjectConstructor.class);
             config.bind(Dependency.class, CyclicDependencyProviderConstructor.class);
-            assertTrue(config.getContext().get(Ref.of(Dependency.class)).isPresent());
+            assertTrue(config.getContext().get(ComponentRef.of(Dependency.class)).isPresent());
         }
 
         @Nested

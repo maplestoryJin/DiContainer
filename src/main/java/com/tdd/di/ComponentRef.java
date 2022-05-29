@@ -5,27 +5,27 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Objects;
 
-public class Ref<ComponentType> {
+public class ComponentRef<ComponentType> {
     private Component component;
     private Type container;
 
-    public static <ComponentType> Ref<ComponentType> of(Class<ComponentType> component) {
-        return new Ref<>(component, null);
+    public static <ComponentType> ComponentRef<ComponentType> of(Class<ComponentType> component) {
+        return new ComponentRef<>(component, null);
     }
 
-    public static <ComponentType> Ref<ComponentType> of(Class<ComponentType> component, Annotation qualifier) {
-        return new Ref<>(component, qualifier);
+    public static <ComponentType> ComponentRef<ComponentType> of(Class<ComponentType> component, Annotation qualifier) {
+        return new ComponentRef<>(component, qualifier);
     }
 
-    public static Ref of(Type type) {
-        return new Ref(type, null);
+    public static ComponentRef of(Type type) {
+        return new ComponentRef(type, null);
     }
 
-    Ref(Type type, Annotation qualifier) {
+    ComponentRef(Type type, Annotation qualifier) {
         init(type, qualifier);
     }
 
-    protected Ref() {
+    protected ComponentRef() {
         Type type = ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[0];
         init(type, null);
     }
@@ -59,8 +59,8 @@ public class Ref<ComponentType> {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        Ref<?> ref = (Ref<?>) o;
-        return component.equals(ref.component) && Objects.equals(container, ref.container);
+        ComponentRef<?> componentRef = (ComponentRef<?>) o;
+        return component.equals(componentRef.component) && Objects.equals(container, componentRef.container);
     }
 
     @Override

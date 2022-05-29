@@ -51,13 +51,13 @@ public class ContextConfig {
         return new Context() {
 
             @Override
-            public <ComponentType> Optional<ComponentType> get(Ref<ComponentType> ref) {
-                if (ref.isContainer()) {
-                    if (ref.getContainer() != Provider.class) return Optional.empty();
-                    return (Optional<ComponentType>) Optional.ofNullable(components.get(ref.component()))
+            public <ComponentType> Optional<ComponentType> get(ComponentRef<ComponentType> componentRef) {
+                if (componentRef.isContainer()) {
+                    if (componentRef.getContainer() != Provider.class) return Optional.empty();
+                    return (Optional<ComponentType>) Optional.ofNullable(components.get(componentRef.component()))
                             .map(p -> (Provider<Object>) () -> p.get(this));
                 }
-                return Optional.ofNullable(components.get(ref.component())).map(p -> ((ComponentType) p.get(this)));
+                return Optional.ofNullable(components.get(componentRef.component())).map(p -> ((ComponentType) p.get(this)));
 
             }
         };
@@ -67,14 +67,14 @@ public class ContextConfig {
         components.get(component).getDependencies().forEach(dependency -> checkDependency(component.type(), visiting, dependency));
     }
 
-    private void checkDependency(Class<?> component, Stack<Class<?>> visiting, Ref ref) {
-        if (!components.containsKey(ref.component()))
-            throw new DependencyNotFoundException(ref.getComponentType(), component);
-        if (!ref.isContainer()) {
-            if (visiting.contains(ref.getComponentType()))
+    private void checkDependency(Class<?> component, Stack<Class<?>> visiting, ComponentRef componentRef) {
+        if (!components.containsKey(componentRef.component()))
+            throw new DependencyNotFoundException(componentRef.getComponentType(), component);
+        if (!componentRef.isContainer()) {
+            if (visiting.contains(componentRef.getComponentType()))
                 throw new CyclicDependenciesFoundException(visiting.stream().toList());
-            visiting.push(ref.getComponentType());
-            checkDependencies(ref.component(), visiting);
+            visiting.push(componentRef.getComponentType());
+            checkDependencies(componentRef.component(), visiting);
             visiting.pop();
         }
     }
@@ -82,7 +82,7 @@ public class ContextConfig {
     interface ComponentProvider<T> {
         T get(Context context);
 
-        default List<Ref> getDependencies() {
+        default List<ComponentRef> getDependencies() {
             return of();
         }
     }
