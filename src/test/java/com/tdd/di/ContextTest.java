@@ -1,6 +1,7 @@
 package com.tdd.di;
 
 import com.tdd.di.ContainerTest.*;
+import com.tdd.di.InjectionTest.ConstructorInjectionTest.InjectConstructor;
 import jakarta.inject.Inject;
 import jakarta.inject.Provider;
 import jakarta.inject.Qualifier;
@@ -156,8 +157,18 @@ class ContextTest {
                 assertSame(dependency, skywalker.dependency());
             }
 
+            @Test
+            void should_throw_exception_if_illegal_qualifier_given_to_instance() {
+                TestComponent instance = new TestComponent() {
+                };
+                assertThrows(IllegalComponentException.class, () -> config.bind(TestComponent.class, instance, new TestLiteral()));
 
-            // TODO throw illegal component if illegal qualifier
+            }
+            @Test
+            void should_throw_exception_if_illegal_qualifier_given_to_component() {
+                assertThrows(IllegalComponentException.class, () -> config.bind(TestComponent.class, InjectConstructor.class, new TestLiteral()));
+
+            }
         }
     }
 
@@ -385,6 +396,13 @@ class ContextTest {
     }
 
 
+    record TestLiteral() implements Test {
+
+        @Override
+        public Class<? extends Annotation> annotationType() {
+            return Test.class;
+        }
+    }
     record NamedLiteral(String value) implements Annotation {
 
         @Override

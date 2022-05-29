@@ -1,6 +1,7 @@
 package com.tdd.di;
 
 import jakarta.inject.Provider;
+import jakarta.inject.Qualifier;
 
 import java.lang.annotation.Annotation;
 import java.util.*;
@@ -15,6 +16,9 @@ public class ContextConfig {
     }
 
     public <Type> void bind(Class<Type> componentClass, Type instance, Annotation... qualifiers) {
+        if (Arrays.stream(qualifiers).anyMatch(q -> !q.annotationType().isAnnotationPresent(Qualifier.class))) {
+            throw new IllegalComponentException();
+        }
         for (Annotation qualifier : qualifiers) {
             bindInstance(componentClass, instance, qualifier);
         }
@@ -25,6 +29,9 @@ public class ContextConfig {
     }
 
     public <Type> void bind(Class<Type> componentClass, Class<? extends Type> implementation, Annotation... qualifiers) {
+        if (Arrays.stream(qualifiers).anyMatch(q -> !q.annotationType().isAnnotationPresent(Qualifier.class))) {
+            throw new IllegalComponentException();
+        }
         for (Annotation qualifier : qualifiers) {
             bindComponent(componentClass, implementation, qualifier);
         }
