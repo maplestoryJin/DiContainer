@@ -3,6 +3,7 @@ package com.tdd.di;
 import com.tdd.di.ContainerTest.*;
 import jakarta.inject.Inject;
 import jakarta.inject.Provider;
+import jakarta.inject.Qualifier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Named;
 import org.junit.jupiter.api.Nested;
@@ -12,11 +13,14 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.lang.annotation.Annotation;
+import java.lang.annotation.Documented;
+import java.lang.annotation.Retention;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
 import static org.junit.jupiter.api.Assertions.*;
 
 @Nested
@@ -131,9 +135,9 @@ class ContextTest {
                 TestComponent instance = new TestComponent() {
                 };
 
-                config.bind(TestComponent.class, instance, new NamedLiteral("ChosenOne"), new NamedLiteral("Skywalker"));
+                config.bind(TestComponent.class, instance, new NamedLiteral("ChosenOne"), new SkywalkerLiteral());
                 TestComponent chosenOne = config.getContext().get(Ref.of(TestComponent.class, new NamedLiteral("ChosenOne"))).get();
-                TestComponent skywalker = config.getContext().get(Ref.of(TestComponent.class, new NamedLiteral("Skywalker"))).get();
+                TestComponent skywalker = config.getContext().get(Ref.of(TestComponent.class, new SkywalkerLiteral())).get();
                 assertSame(instance, chosenOne);
                 assertSame(instance, skywalker);
             }
@@ -144,10 +148,10 @@ class ContextTest {
                 Dependency dependency = new Dependency() {
                 };
                 config.bind(Dependency.class, dependency);
-                config.bind(TestComponent.class, ConstructionInjection.class, new NamedLiteral("ChosenOne"), new NamedLiteral("Skywalker"));
+                config.bind(TestComponent.class, ConstructionInjection.class, new NamedLiteral("ChosenOne"), new SkywalkerLiteral());
 
                 TestComponent chosenOne = config.getContext().get(Ref.of(TestComponent.class, new NamedLiteral("ChosenOne"))).get();
-                TestComponent skywalker = config.getContext().get(Ref.of(TestComponent.class, new NamedLiteral("Skywalker"))).get();
+                TestComponent skywalker = config.getContext().get(Ref.of(TestComponent.class, new SkywalkerLiteral())).get();
                 assertSame(dependency, chosenOne.dependency());
                 assertSame(dependency, skywalker.dependency());
             }
@@ -387,5 +391,17 @@ class ContextTest {
         public Class<? extends Annotation> annotationType() {
             return jakarta.inject.Named.class;
         }
+    }
+    record SkywalkerLiteral() implements Skywalker {
+        @Override
+        public Class<? extends Annotation> annotationType() {
+            return Skywalker.class;
+        }
+    }
+
+    @Documented
+    @Retention(RUNTIME)
+    @Qualifier
+    public @interface Skywalker {
     }
 }
