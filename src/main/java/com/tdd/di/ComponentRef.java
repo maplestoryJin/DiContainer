@@ -1,5 +1,7 @@
 package com.tdd.di;
 
+import jakarta.inject.Qualifier;
+
 import java.lang.annotation.Annotation;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -19,6 +21,10 @@ public class ComponentRef<ComponentType> {
 
     public static ComponentRef of(Type type) {
         return new ComponentRef(type, null);
+    }
+
+    public static ComponentRef of(Type type, Annotation qualifier) {
+        return new ComponentRef(type, qualifier);
     }
 
     ComponentRef(Type type, Annotation qualifier) {

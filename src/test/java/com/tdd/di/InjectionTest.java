@@ -3,6 +3,7 @@ package com.tdd.di;
 import com.tdd.di.ContainerTest.Dependency;
 import com.tdd.di.ContainerTest.TestComponent;
 import jakarta.inject.Inject;
+import jakarta.inject.Named;
 import jakarta.inject.Provider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -97,8 +98,26 @@ class InjectionTest {
                 }
             }
 
-            // TODO inject with qualifier
+            @Nested
+            class WithQualifier {
 
+                static class InjectConstructor {
+                    @Inject
+                    public InjectConstructor(@Named("ChosenOne") Dependency dependency) {
+                    }
+                }
+
+                // TODO inject with qualifier
+                // TODO throw illegal component if illegal qualifier given to inject point
+
+                @Test
+                void should_include_qualifier_with_dependencies() {
+                    InjectionProvider<InjectConstructor> provider = new InjectionProvider<>(InjectConstructor.class);
+                    assertArrayEquals(new ComponentRef<?>[]{ComponentRef.of(Dependency.class, new ContextTest.NamedLiteral("ChosenOne"))},
+                            provider.getDependencies().toArray());
+                }
+
+            }
         }
 
         @Nested
@@ -152,8 +171,6 @@ class InjectionTest {
                 public NoDefaultConstructorNorInjectConstructor(Dependency dependency) {
                 }
             }
-
-            // TODO throw illegal component if illegal qualifier given to inject point
 
         }
 
@@ -216,7 +233,12 @@ class InjectionTest {
 
             }
 
-            // TODO inject with qualifier
+            @Nested
+            class WithQualifier {
+                // TODO inject with qualifier
+                // TODO dependencies include qualifier
+                // TODO throw illegal component if illegal qualifier given to inject point
+            }
 
         }
 
@@ -233,9 +255,6 @@ class InjectionTest {
                 @Inject
                 final Dependency dependency = null;
             }
-
-
-            // TODO throw illegal component if illegal qualifier given to inject point
         }
     }
 
@@ -364,7 +383,12 @@ class InjectionTest {
                 }
             }
 
-            // TODO inject with qualifier
+            @Nested
+            class WithQualifier {
+                // TODO inject with qualifier
+                // TODO dependencies include qualifier
+                // TODO throw illegal component if illegal qualifier given to inject point
+            }
         }
 
         @Nested
@@ -380,8 +404,6 @@ class InjectionTest {
                 <T> void install(T t) {
                 }
             }
-
-            // TODO throw illegal component if illegal qualifier given to inject point
         }
 
 

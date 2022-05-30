@@ -5,10 +5,7 @@ import com.tdd.di.InjectionTest.ConstructorInjectionTest.InjectConstructor;
 import jakarta.inject.Inject;
 import jakarta.inject.Provider;
 import jakarta.inject.Qualifier;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Named;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -18,6 +15,7 @@ import java.lang.annotation.Documented;
 import java.lang.annotation.Retention;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -164,6 +162,7 @@ class ContextTest {
                 assertThrows(IllegalComponentException.class, () -> config.bind(TestComponent.class, instance, new TestLiteral()));
 
             }
+
             @Test
             void should_throw_exception_if_illegal_qualifier_given_to_component() {
                 assertThrows(IllegalComponentException.class, () -> config.bind(TestComponent.class, InjectConstructor.class, new TestLiteral()));
@@ -181,8 +180,8 @@ class ContextTest {
             config.bind(TestComponent.class, component);
             DependencyNotFoundException exception = assertThrows(DependencyNotFoundException.class,
                     () -> config.getContext());
-            assertEquals(Dependency.class, exception.getDependency());
-            assertEquals(TestComponent.class, exception.getComponent());
+            assertEquals(Dependency.class, exception.getDependency().type());
+            assertEquals(TestComponent.class, exception.getComponent().type());
         }
 
         public static Stream<Arguments> should_throw_exception_if_dependency_not_found() {
@@ -390,7 +389,24 @@ class ContextTest {
 
         @Nested
         class WithQualifier {
-            // TODO dependency missing if qualifier not match
+
+            @Test
+            void should_throw_exception_if_dependency_with_qualifier_not_found() {
+                config.bind(Dependency.class, new Dependency() {
+                });
+                config.bind(InjectionConstructor.class, InjectionConstructor.class, new NamedLiteral("Owner"));
+                DependencyNotFoundException exception = assertThrows(DependencyNotFoundException.class, () -> config.getContext());
+                assertEquals(new Component(Dependency.class, new SkywalkerLiteral()), exception.getDependency());
+                assertEquals(new Component(InjectionConstructor.class, new NamedLiteral("Owner")), exception.getComponent());
+
+            }
+
+            static class InjectionConstructor {
+                @Inject
+                public InjectionConstructor(@Skywalker Dependency dependency) {
+                }
+            }
+
             // TODO check cyclic dependencies with qualifier
         }
     }
@@ -403,17 +419,31 @@ class ContextTest {
             return Test.class;
         }
     }
-    record NamedLiteral(String value) implements Annotation {
+
+    record NamedLiteral(String value) implements jakarta.inject.Named {
 
         @Override
         public Class<? extends Annotation> annotationType() {
             return jakarta.inject.Named.class;
         }
+
+        @Override
+        public boolean equals(final Object o) {
+            if (o instanceof jakarta.inject.Named named) return Objects.equals(value, named.value());
+            return false;
+        }
+
     }
+
     record SkywalkerLiteral() implements Skywalker {
         @Override
         public Class<? extends Annotation> annotationType() {
             return Skywalker.class;
+        }
+
+        @Override
+        public boolean equals(final Object obj) {
+            return obj instanceof Skywalker;
         }
     }
 
