@@ -12,7 +12,7 @@ public class ComponentRef<ComponentType> {
     private Type container;
 
     public static <ComponentType> ComponentRef<ComponentType> of(Class<ComponentType> component) {
-        return new ComponentRef<>(component, null);
+        return of(component, null);
     }
 
     public static <ComponentType> ComponentRef<ComponentType> of(Class<ComponentType> component, Annotation qualifier) {
@@ -20,7 +20,7 @@ public class ComponentRef<ComponentType> {
     }
 
     public static ComponentRef of(Type type) {
-        return new ComponentRef(type, null);
+        return of(type, null);
     }
 
     public static ComponentRef of(Type type, Annotation qualifier) {
