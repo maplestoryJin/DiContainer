@@ -408,6 +408,28 @@ class ContextTest {
             }
 
             // TODO check cyclic dependencies with qualifier
+            static class SkywalkerDependency implements Dependency {
+                @Inject
+                public SkywalkerDependency(@jakarta.inject.Named("ChosenOne") Dependency dependency) {
+                }
+            }
+
+            static class NoCyclicDependency implements Dependency {
+                @Inject
+                public NoCyclicDependency(@Skywalker Dependency dependency) {
+                }
+            }
+
+            @Test
+            void should_not_throw_cyclic_dependency_exception_if_component_with_same_type_but_tag_with_different_qualifier() {
+                Dependency dependency = new Dependency(){
+                };
+                config.bind(Dependency.class, dependency, new NamedLiteral("ChosenOne"));
+                config.bind(Dependency.class, SkywalkerDependency.class, new SkywalkerLiteral());
+                config.bind(Dependency.class, NoCyclicDependency.class);
+
+                assertDoesNotThrow(() -> config.getContext());
+            }
         }
     }
 
@@ -433,6 +455,10 @@ class ContextTest {
             return false;
         }
 
+        @Override
+        public int hashCode() {
+            return "value".hashCode() * 127 ^ value.hashCode();
+        }
     }
 
     record SkywalkerLiteral() implements Skywalker {
