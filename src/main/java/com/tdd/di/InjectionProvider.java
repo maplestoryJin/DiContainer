@@ -19,6 +19,7 @@ class InjectionProvider<T> implements ContextConfig.ComponentProvider<T> {
     private final Constructor<T> injectConstructor;
     private final List<Field> injectFields;
     private final List<Method> injectMethods;
+    private final List<ComponentRef> dependencies;
 
     InjectionProvider(Class<? extends T> component) {
         if (Modifier.isAbstract(component.getModifiers())) throw new IllegalComponentException();
@@ -32,6 +33,7 @@ class InjectionProvider<T> implements ContextConfig.ComponentProvider<T> {
         if (injectMethods.stream().anyMatch(InjectionProvider::hasTypeParameter)) {
             throw new IllegalComponentException();
         }
+        dependencies = getDependencies();
 
     }
 
@@ -67,9 +69,10 @@ class InjectionProvider<T> implements ContextConfig.ComponentProvider<T> {
     }
 
     private static Annotation getQualifier(final Annotation[] annotations) {
-        Annotation qualifier = stream(annotations).filter(a -> a.annotationType().isAnnotationPresent(Qualifier.class))
+        List<Annotation> qualifiers = stream(annotations).filter(a -> a.annotationType().isAnnotationPresent(Qualifier.class)).toList();
+        if (qualifiers.size() > 1) throw new IllegalComponentException();
+        return qualifiers.stream()
                 .findFirst().orElse(null);
-        return qualifier;
     }
 
     private static List<Method> getInjectMethods(Class<?> component) {
@@ -121,16 +124,16 @@ class InjectionProvider<T> implements ContextConfig.ComponentProvider<T> {
     }
 
     private static Object toDependency(final Context context, final Field field) {
-        return toDependency(context, field.getGenericType());
+        return toDependency(context, field.getGenericType(), getQualifier(field.getAnnotations()));
     }
 
     private static Object[] toDependencies(final Context context, final Executable executable) {
         return stream(executable.getParameters())
-                .map(p -> toDependency(context, p.getParameterizedType())).toArray(Object[]::new);
+                .map(p -> toDependency(context, p.getParameterizedType(), getQualifier(p.getAnnotations()))).toArray(Object[]::new);
     }
 
-    private static Object toDependency(Context context, Type type) {
-        return context.get(ComponentRef.of(type)).get();
+    private static Object toDependency(Context context, Type type, final Annotation qualifier) {
+        return context.get(ComponentRef.of(type, qualifier)).get();
     }
 
 
