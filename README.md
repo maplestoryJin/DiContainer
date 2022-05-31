@@ -38,15 +38,15 @@
     * ~~针对 instance 指定多个 Qualifier （新增任务）~~
     * ~~针对组件指定多个Qualifier （新增任务）~~
   * ~~注册组件时，如果不是合法的Qualifier，则不接收组件注册（新增任务）~~
-  * 寻找依赖时，需同时满足类型与自定义 Qualifier 标注
-    * 在检查依赖时使用 Qualifier（新增任务）
-    * 在检查循环依赖时使用 Qualifier （新增任务）
-    * 构造函数注入可以使用 Qualifier 声明依赖（新增任务）
-      * 如果不是合法的 Qualifier ，则组件非法
-    * 字段注入可以使用 Qualifier 声明依赖（新增任务）
-      * 如果不是合法的 Qualifier ，则组件非法
-    * 函数注入可以使用 Qualifier 声明依赖（新增任务）
-      * 如果不是合法的 Qualifier ，则组件非法 
+  * ~~寻找依赖时，需同时满足类型与自定义 Qualifier 标注~~
+    * ~~在检查依赖时使用 Qualifier（新增任务）~~
+    * ~~在检查循环依赖时使用 Qualifier （新增任务）~~
+    * ~~构造函数注入可以使用 Qualifier 声明依赖（新增任务）~~
+      * ~~如果不是合法的 Qualifier ，则组件非法~~
+    * ~~字段注入可以使用 Qualifier 声明依赖（新增任务）~~
+      * ~~如果不是合法的 Qualifier ，则组件非法~~
+    * ~~函数注入可以使用 Qualifier 声明依赖（新增任务）~~
+      * ~~如果不是合法的 Qualifier ，则组件非法~~
   * ~~支持默认 Qualifier——Named（不需要）~~
   * ~~注册组件时，可从类对象上提取 Qualifier（不需要）~~
 * Singleton 生命周期
