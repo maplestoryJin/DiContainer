@@ -111,7 +111,7 @@ class InjectionTest {
                 // TODO throw illegal component if illegal qualifier given to inject point
 
                 @Test
-                void should_include_qualifier_with_dependencies() {
+                void should_include_dependencies_with_qualifier() {
                     InjectionProvider<InjectConstructor> provider = new InjectionProvider<>(InjectConstructor.class);
                     assertArrayEquals(new ComponentRef<?>[]{ComponentRef.of(Dependency.class, new ContextTest.NamedLiteral("ChosenOne"))},
                             provider.getDependencies().toArray());
@@ -236,7 +236,20 @@ class InjectionTest {
             @Nested
             class WithQualifier {
                 // TODO inject with qualifier
-                // TODO dependencies include qualifier
+                static class InjectField {
+
+                    @Inject
+                    @Named("ChosenOne")
+                    Dependency dependency;
+                }
+
+                @Test
+                void should_include_dependencies_with_qualifier() {
+                    InjectionProvider<InjectField> provider = new InjectionProvider<>(InjectField.class);
+                    assertArrayEquals(new ComponentRef<?>[]{ComponentRef.of(Dependency.class, new ContextTest.NamedLiteral("ChosenOne"))},
+                            provider.getDependencies().toArray());
+                }
+
                 // TODO throw illegal component if illegal qualifier given to inject point
             }
 
@@ -386,7 +399,20 @@ class InjectionTest {
             @Nested
             class WithQualifier {
                 // TODO inject with qualifier
-                // TODO dependencies include qualifier
+
+                static class InjectMethod {
+                    @Inject
+                    void install(@Named("ChosenOne") Dependency dependency) {
+                    }
+                }
+
+                @Test
+                void should_include_dependencies_with_qualifier() {
+                    InjectionProvider<InjectMethod> provider = new InjectionProvider<>(InjectMethod.class);
+                    assertArrayEquals(new ComponentRef<?>[]{ComponentRef.of(Dependency.class, new ContextTest.NamedLiteral("ChosenOne"))},
+                            provider.getDependencies().toArray());
+                }
+
                 // TODO throw illegal component if illegal qualifier given to inject point
             }
         }
