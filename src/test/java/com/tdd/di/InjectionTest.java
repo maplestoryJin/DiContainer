@@ -8,7 +8,6 @@ import jakarta.inject.Provider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
 import org.mockito.Mockito;
 
 import java.lang.reflect.ParameterizedType;
@@ -506,7 +505,7 @@ class InjectionTest {
 
             static class TypeParameterInjectMethod {
                 @Inject
-                <T> void install(T t) {
+                <T> void install() {
                 }
             }
         }

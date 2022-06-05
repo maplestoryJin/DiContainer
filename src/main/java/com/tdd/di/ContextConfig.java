@@ -24,11 +24,11 @@ public class ContextConfig {
         }
     }
 
-    public <Type> void bind(Class<Type> componentClass, Class<? extends Type> implementation) {
+    public <Type, Implementation extends Type> void bind(Class<Type> componentClass, Class<Implementation> implementation) {
         bindComponent(componentClass, implementation, null);
     }
 
-    public <Type> void bind(Class<Type> componentClass, Class<? extends Type> implementation, Annotation... qualifiers) {
+    public <Type, Implementation extends Type> void bind(Class<Type> componentClass, Class<Implementation> implementation, Annotation... qualifiers) {
         if (Arrays.stream(qualifiers).anyMatch(q -> !q.annotationType().isAnnotationPresent(Qualifier.class))) {
             throw new IllegalComponentException();
         }
@@ -41,8 +41,8 @@ public class ContextConfig {
         components.put(new Component(componentClass, qualifier), context -> instance);
     }
 
-    private <Type> void bindComponent(Class<Type> componentClass, Class<? extends Type> implementation, Annotation qualifier) {
-        components.put(new Component(componentClass, qualifier), new InjectionProvider<Type>(implementation));
+    private <Type, Implementation extends Type> void bindComponent(Class<Type> componentClass, Class<Implementation> implementation, Annotation qualifier) {
+        components.put(new Component(componentClass, qualifier), new InjectionProvider<>(implementation));
     }
 
     public Context getContext() {
@@ -82,7 +82,7 @@ public class ContextConfig {
     interface ComponentProvider<T> {
         T get(Context context);
 
-        default List<ComponentRef> getDependencies() {
+        default List<ComponentRef<?>> getDependencies() {
             return of();
         }
     }
