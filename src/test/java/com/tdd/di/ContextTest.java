@@ -227,6 +227,28 @@ class ContextTest {
 
         }
 
+        @Test
+        void should_throw_exception_if_multi_scope_provided() {
+            assertThrows(IllegalComponentException.class, () -> config.bind(TestComponent.class, NotSingleton.class, new SingletonLiteral(), new PooledLiteral()));
+        }
+
+        @Singleton
+        @Pooled
+        static class MultiScopeAnnotation implements TestComponent {
+
+        }
+
+        @Test
+        void should_throw_exception_if_multi_scope_annotated() {
+            assertThrows(IllegalComponentException.class, () -> config.bind(TestComponent.class, MultiScopeAnnotation.class));
+        }
+
+
+        @Test
+        void should_throw_exception_if_scope_undefined() {
+            assertThrows(IllegalComponentException.class, () -> config.bind(TestComponent.class, NotSingleton.class, new PooledLiteral()));
+        }
+
         @Nested
         class WithQualifier {
 
@@ -252,6 +274,7 @@ class ContextTest {
                 assertSame(context.get(ComponentRef.of(TestComponent.class, new SkywalkerLiteral())).get(), context.get(ComponentRef.of(TestComponent.class, new SkywalkerLiteral())).get());
 
             }
+
 
         }
 

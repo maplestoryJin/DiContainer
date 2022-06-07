@@ -50,10 +50,6 @@ protected ComponentRef(Annotation qualifier) {
         return container != null;
     }
 
-    public Class<?> getComponentType() {
-        return component.type();
-    }
-
     public Type getContainer() {
         return container;
     }

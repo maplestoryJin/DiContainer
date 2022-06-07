@@ -96,13 +96,13 @@ record PooledLiteral() implements Pooled {
     }
 }
 
-class PooledProvider<T> implements ContextConfig.ComponentProvider<T> {
+class PooledProvider<T> implements ComponentProvider<T> {
     public static final int MAX = 2;
     private List<T> pool = new ArrayList<>();
     private int current;
-    private ContextConfig.ComponentProvider<T> provider;
+    private ComponentProvider<T> provider;
 
-    public PooledProvider(final ContextConfig.ComponentProvider<T> provider) {
+    public PooledProvider(final ComponentProvider<T> provider) {
         this.provider = provider;
     }
 
