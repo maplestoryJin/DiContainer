@@ -1,6 +1,5 @@
 package com.tdd.di;
 
-import com.tdd.di.ContainerTest.*;
 import com.tdd.di.InjectionTest.ConstructorInjectionTest.InjectConstructor;
 import jakarta.inject.Inject;
 import jakarta.inject.Provider;
@@ -13,12 +12,10 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import java.lang.annotation.Annotation;
 import java.lang.annotation.Documented;
 import java.lang.annotation.Retention;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -321,9 +318,9 @@ class ContextTest {
         void should_throw_exception_if_transitive_cyclic_dependency(Class<TestComponent> component,
                                                                     Class<Dependency> dependency,
                                                                     Class<AnotherDependency> anotherDependency) {
-            config.bind(TestComponent.class, ComponentInjectWithInjectConstructor.class);
-            config.bind(Dependency.class, DependencyDependsOnAnotherDependency.class);
-            config.bind(AnotherDependency.class, AnotherDependencyDependsOnComponent.class);
+            config.bind(TestComponent.class, component);
+            config.bind(Dependency.class, dependency);
+            config.bind(AnotherDependency.class, anotherDependency);
             CyclicDependenciesFoundException exception = assertThrows(CyclicDependenciesFoundException.class,
                     () -> config.getContext());
 
@@ -529,48 +526,4 @@ class ContextTest {
     }
 
 
-    record TestLiteral() implements Test {
-
-        @Override
-        public Class<? extends Annotation> annotationType() {
-            return Test.class;
-        }
-    }
-
-    record NamedLiteral(String value) implements jakarta.inject.Named {
-
-        @Override
-        public Class<? extends Annotation> annotationType() {
-            return jakarta.inject.Named.class;
-        }
-
-        @Override
-        public boolean equals(final Object o) {
-            if (o instanceof jakarta.inject.Named named) return Objects.equals(value, named.value());
-            return false;
-        }
-
-        @Override
-        public int hashCode() {
-            return "value".hashCode() * 127 ^ value.hashCode();
-        }
-    }
-
-    record SkywalkerLiteral() implements Skywalker {
-        @Override
-        public Class<? extends Annotation> annotationType() {
-            return Skywalker.class;
-        }
-
-        @Override
-        public boolean equals(final Object obj) {
-            return obj instanceof Skywalker;
-        }
-    }
-
-    @Documented
-    @Retention(RUNTIME)
-    @Qualifier
-    public @interface Skywalker {
-    }
 }
