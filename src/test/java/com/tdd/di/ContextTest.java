@@ -3,7 +3,7 @@ package com.tdd.di;
 import com.tdd.di.InjectionTest.ConstructorInjectionTest.InjectConstructor;
 import jakarta.inject.Inject;
 import jakarta.inject.Provider;
-import jakarta.inject.Qualifier;
+import jakarta.inject.Singleton;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Named;
 import org.junit.jupiter.api.Nested;
@@ -11,15 +11,16 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.internal.matchers.Not;
 
-import java.lang.annotation.Documented;
-import java.lang.annotation.Retention;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
 import static org.junit.jupiter.api.Assertions.*;
 
 @Nested
@@ -183,6 +184,80 @@ class ContextTest {
     }
 
     @Nested
+    class WithScope {
+        static class NotSingleton implements TestComponent {
+        }
+
+        @Singleton
+        static class SingletonScope implements TestComponent {
+        }
+
+        @Test
+        void should_not_singleton_scope_by_default() {
+            config.bind(TestComponent.class, NotSingleton.class);
+            Context context = config.getContext();
+            assertNotSame(context.get(ComponentRef.of(TestComponent.class)).get(), context.get(ComponentRef.of(TestComponent.class)).get());
+        }
+
+        @Test
+        void should_bind_component_with_customize_scope() {
+            config.scope(Pooled.class, PooledProvider::new);
+            config.bind(TestComponent.class, NotSingleton.class, new PooledLiteral());
+            Context context = config.getContext();
+            Set<TestComponent> components = IntStream.range(0, 5).mapToObj(i -> context.get(ComponentRef.of(TestComponent.class)).get()).collect(Collectors.toSet());
+            assertEquals(PooledProvider.MAX, components.size());
+        }
+
+        @Test
+        void should_bind_component_as_singleton_scoped() {
+            config.bind(TestComponent.class, NotSingleton.class, new SingletonLiteral());
+            Context context = config.getContext();
+            assertSame(context.get(ComponentRef.of(TestComponent.class)).get(), context.get(ComponentRef.of(TestComponent.class)).get());
+        }
+
+        @Singleton
+        static class SingletonAnnotated implements TestComponent {
+        }
+
+        @Test
+        void should_retrieve_scope_annotation_from_component() {
+            config.bind(TestComponent.class, SingletonAnnotated.class);
+            Context context = config.getContext();
+            assertSame(context.get(ComponentRef.of(TestComponent.class)).get(), context.get(ComponentRef.of(TestComponent.class)).get());
+
+        }
+
+        @Nested
+        class WithQualifier {
+
+            @Test
+            void should_not_singleton_scope_by_default() {
+                config.bind(TestComponent.class, NotSingleton.class, new SkywalkerLiteral());
+                Context context = config.getContext();
+                assertNotSame(context.get(ComponentRef.of(TestComponent.class, new SkywalkerLiteral())).get(), context.get(ComponentRef.of(TestComponent.class, new SkywalkerLiteral())).get());
+            }
+
+
+            @Test
+            void should_bind_component_as_singleton_scoped() {
+                config.bind(TestComponent.class, NotSingleton.class, new SingletonLiteral(), new SkywalkerLiteral());
+                Context context = config.getContext();
+                assertSame(context.get(ComponentRef.of(TestComponent.class, new SkywalkerLiteral())).get(), context.get(ComponentRef.of(TestComponent.class, new SkywalkerLiteral())).get());
+            }
+
+            @Test
+            void should_retrieve_scope_annotation_from_component() {
+                config.bind(TestComponent.class, SingletonAnnotated.class, new SkywalkerLiteral());
+                Context context = config.getContext();
+                assertSame(context.get(ComponentRef.of(TestComponent.class, new SkywalkerLiteral())).get(), context.get(ComponentRef.of(TestComponent.class, new SkywalkerLiteral())).get());
+
+            }
+
+        }
+
+    }
+
+    @Nested
     class DependencyCheckTest {
 
         @ParameterizedTest
@@ -202,7 +277,9 @@ class ContextTest {
                     Arguments.of(Named.of("Inject Method", MissingDependencyMethod.class)),
                     Arguments.of(Named.of("Provider in Inject Constructor", MissingDependencyProviderConstructor.class)),
                     Arguments.of(Named.of("Provider in Inject Field", MissingDependencyProviderField.class)),
-                    Arguments.of(Named.of("Provider in Inject Method", MissingDependencyProviderMethod.class)));
+                    Arguments.of(Named.of("Provider in Inject Method", MissingDependencyProviderMethod.class)),
+                    Arguments.of(Named.of("Scoped", MissingDependencyScoped.class)),
+                    Arguments.of(Named.of("Provider Scoped", MissingDependencyProviderScoped.class)));
         }
 
         static class MissingDependencyConstructor implements TestComponent {
@@ -239,6 +316,24 @@ class ContextTest {
 
 
         static class MissingDependencyProviderMethod implements TestComponent {
+            @Inject
+            void install(Provider<Dependency> dependencyProvider) {
+
+            }
+        }
+
+
+        @Singleton
+        static class MissingDependencyScoped implements TestComponent {
+            @Inject
+            void install(Dependency dependencyProvider) {
+
+            }
+        }
+
+
+        @Singleton
+        static class MissingDependencyProviderScoped implements TestComponent {
             @Inject
             void install(Provider<Dependency> dependencyProvider) {
 
@@ -491,6 +586,7 @@ class ContextTest {
                 @Inject
                 Dependency dependency;
             }
+
             static class NoCyclicInjectMethod implements Dependency {
                 @Inject
                 void install(@Skywalker Dependency dependency) {
