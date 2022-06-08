@@ -11,8 +11,11 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static com.tdd.di.ContextConfig.ContextConfigError.circularDependencies;
+import static com.tdd.di.ContextConfig.ContextConfigError.unsatisfiedResolution;
 import static com.tdd.di.ContextConfig.ContextConfigException.illegalAnnotation;
 import static java.util.List.of;
+import static java.util.stream.Collectors.joining;
 
 public class ContextConfig {
     private final Map<Component, ComponentProvider<?>> components = new HashMap<>();
@@ -111,10 +114,10 @@ public class ContextConfig {
 
     private void checkDependency(Component component, Stack<Component> visiting, ComponentRef dependency) {
         if (!components.containsKey(dependency.component()))
-            throw new DependencyNotFoundException(dependency.component(), component);
+            throw unsatisfiedResolution(dependency.component(), component);
         if (!dependency.isContainer()) {
             if (visiting.contains(dependency.component()))
-                throw new CyclicDependenciesFoundException(visiting.stream().toList());
+                throw circularDependencies(visiting,dependency.component());
             visiting.push(dependency.component());
             checkDependencies(dependency.component(), visiting);
             visiting.pop();
@@ -125,17 +128,35 @@ public class ContextConfig {
         ComponentProvider<?> create(ComponentProvider<?> provider);
     }
 
+    static class ContextConfigError extends Error {
+        public static ContextConfigError unsatisfiedResolution(Component component, Component dependency) {
+            return new ContextConfigError(MessageFormat.format("Unsatisfied resolution: {1} for {0} ", component, dependency));
+        }
+
+        public static ContextConfigError circularDependencies(Collection<Component> path, Component circular) {
+            return new ContextConfigError(MessageFormat.format("Circular dependencies: {0} -> [{1}]",
+                    path.stream().map(Objects::toString).collect(joining(" -> ")), circular));
+        }
+
+        ContextConfigError(String message) {
+            super(message);
+        }
+    }
+
     static class ContextConfigException extends RuntimeException {
         static ContextConfigException illegalAnnotation(Class<?> type, List<Annotation> annotations) {
             return new ContextConfigException(MessageFormat.format("Unqualified annotations: {0} of {1}",
                     String.join(" , ", annotations.stream().map(Object::toString).toList()), type));
         }
+
         static ContextConfigException unknownScope(Class<? extends Annotation> annotationType) {
             return new ContextConfigException(MessageFormat.format("Unknown scope: {0}", annotationType));
         }
+
         static ContextConfigException duplicated(Component component) {
             return new ContextConfigException(MessageFormat.format("Duplicated: {0}", component));
         }
+
         ContextConfigException(String message) {
             super(message);
         }
