@@ -31,7 +31,7 @@
   * ~~注入构造函数中可以声明对于 Provider 的依赖~~
   * ~~注入字段中可以声明对于 Provider 的依赖~~
   * ~~注入方法中可声明对于 Provider 的依赖~~
-* 自定义 Qualifier 的依赖
+* ~~自定义 Qualifier 的依赖~~
   * ~~注册组件时，可额外指定 Qualifier~~
     * ~~针对 instance 指定一个 Qualifier（新增任务）~~
     * ~~针对组件指定一个 Qualifier （新增任务）~~
@@ -49,11 +49,11 @@
       * ~~如果不是合法的 Qualifier ，则组件非法~~
   * ~~支持默认 Qualifier——Named（不需要）~~
   * ~~注册组件时，可从类对象上提取 Qualifier（不需要）~~
-* Singleton 生命周期
-  * 注册组件时，可额外指定是否为 Singleton
-  * 注册组件时，可从类对象上提取 Singleton 标注
-  * 对于包含 Singleton 标注的组件，在容器范围内提供唯一实
-  * 例容器组件默认不是 Single 生命周期
-* 自定义 Scope 标注
-  * 可向容器注册自定义 Scope 标注的回调
+* ~~Singleton 生命周期~~
+  * ~~注册组件时，可额外指定是否为 Singleton~~
+  * ~~注册组件时，可从类对象上提取 Singleton 标注~~
+  * ~~对于包含 Singleton 标注的组件，在容器范围内提供唯一实~~
+  * ~~例容器组件默认不是 Single 生命周期~~
+* ~~自定义 Scope 标注~~
+  * ~~可向容器注册自定义 Scope 标注的回调~~
 
