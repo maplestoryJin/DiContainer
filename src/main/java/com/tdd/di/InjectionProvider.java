@@ -5,6 +5,7 @@ import jakarta.inject.Qualifier;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
+import java.text.MessageFormat;
 import java.util.*;
 import java.util.function.BiFunction;
 import java.util.stream.Stream;
@@ -19,18 +20,22 @@ class InjectionProvider<T> implements ComponentProvider<T> {
     private final List<Injectable<Method>> injectMethods;
 
     InjectionProvider(Class<T> component) {
-        if (Modifier.isAbstract(component.getModifiers())) throw new IllegalComponentException();
+        if (Modifier.isAbstract(component.getModifiers())) throw ComponentError.abstractComponent(component);
         injectConstructor = getInjectConstructor(component);
         injectFields = getInjectFields(component);
         injectMethods = getInjectMethods(component);
 
-        if (injectFields.stream().map(Injectable::element).anyMatch(f -> Modifier.isFinal(f.getModifiers()))) {
-            throw new IllegalComponentException();
+        if (accessibleObject(injectFields).anyMatch(f -> Modifier.isFinal(f.getModifiers()))) {
+            throw ComponentError.finalInjectFields(component, accessibleObject(injectFields).toList());
         }
-        if (injectMethods.stream().map(Injectable::element).anyMatch(InjectionProvider::hasTypeParameter)) {
-            throw new IllegalComponentException();
+        if (accessibleObject(injectMethods).anyMatch(InjectionProvider::hasTypeParameter)) {
+            throw ComponentError.injectMethodsWithTypeParameter(component, accessibleObject(injectMethods).toList());
         }
 
+    }
+
+    private <Element extends AccessibleObject> Stream<Element> accessibleObject(final List<Injectable<Element>> injectables) {
+        return injectables.stream().map(Injectable::element);
     }
 
     record Injectable<Element extends AccessibleObject>(Element element, ComponentRef<?>[] required) {
@@ -48,16 +53,16 @@ class InjectionProvider<T> implements ComponentProvider<T> {
 
 
         private static ComponentRef<?> toComponentRef(Parameter parameter) {
-            return ComponentRef.of(parameter.getParameterizedType(), getQualifier(parameter.getAnnotations()));
+            return ComponentRef.of(parameter.getParameterizedType(), getQualifier(parameter));
         }
 
         private static ComponentRef<?> toComponentRef(Field field) {
-            return ComponentRef.of(field.getGenericType(), getQualifier(field.getAnnotations()));
+            return ComponentRef.of(field.getGenericType(), getQualifier(field));
         }
 
-        private static Annotation getQualifier(final Annotation[] annotations) {
-            List<Annotation> qualifiers = stream(annotations).filter(a -> a.annotationType().isAnnotationPresent(Qualifier.class)).toList();
-            if (qualifiers.size() > 1) throw new IllegalComponentException();
+        private static Annotation getQualifier(final AnnotatedElement element) {
+            List<Annotation> qualifiers = stream(element.getAnnotations()).filter(a -> a.annotationType().isAnnotationPresent(Qualifier.class)).toList();
+            if (qualifiers.size() > 1) throw ComponentError.ambiguousQualifiers(element, qualifiers);
             return qualifiers.stream()
                     .findFirst().orElse(null);
         }
@@ -103,7 +108,7 @@ class InjectionProvider<T> implements ComponentProvider<T> {
     private static <T> Injectable<Constructor<T>> getInjectConstructor(Class<T> component) {
         List<Constructor<?>> injectConstructors = injectable(component.getConstructors())
                 .toList();
-        if (injectConstructors.size() > 1) throw new IllegalComponentException();
+        if (injectConstructors.size() > 1) throw ComponentError.ambiguousInjectableConstructors(component);
         return of(defaultConstructor(component, injectConstructors));
     }
 
@@ -114,7 +119,7 @@ class InjectionProvider<T> implements ComponentProvider<T> {
                     try {
                         return component.getDeclaredConstructor();
                     } catch (NoSuchMethodException e) {
-                        throw new IllegalComponentException();
+                        throw ComponentError.noDefaultConstructor(component);
                     }
                 });
     }
@@ -155,4 +160,39 @@ class InjectionProvider<T> implements ComponentProvider<T> {
     }
 
 
+    public static class ComponentError extends Error {
+        public static ComponentError abstractComponent(Class<?> component) {
+            return new ComponentError(MessageFormat.format("Can not be abstract: {0}", component));
+        }
+
+        public static ComponentError finalInjectFields(Class<?> component, Collection<Field> fields) {
+            return new ComponentError(MessageFormat.format("Injectable field can not be final: {0} in {1}",
+                    String.join(" , ", fields.stream().map(Field::getName).toList()), component));
+        }
+
+        public static ComponentError injectMethodsWithTypeParameter(Class<?> component, Collection<Method> fields) {
+            return new ComponentError(MessageFormat.format("Injectable method can not have type parameter: {0} in {1}",
+                    String.join(" , ", fields.stream().map(Method::getName).toList()), component));
+        }
+
+        public static ComponentError ambiguousInjectableConstructors(Class<?> component) {
+            return new ComponentError(MessageFormat.format("Ambiguous injectable constructors: {0}", component));
+        }
+
+        public static ComponentError noDefaultConstructor(Class<?> component) {
+            return new ComponentError(MessageFormat.format("No default constructors: {0}", component));
+        }
+
+        public static ComponentError ambiguousQualifiers(AnnotatedElement element, List<Annotation> qualifiers) {
+            Class<?> component;
+            if (element instanceof Parameter p) component = p.getDeclaringExecutable().getDeclaringClass();
+            else component = ((Field) element).getDeclaringClass();
+            return new ComponentError(MessageFormat.format("Ambiguous qualifiers: {0} on {1} of {2}",
+                    String.join(" , ", qualifiers.stream().map(Object::toString).toList()), element, component));
+        }
+
+        ComponentError(String message) {
+            super(message);
+        }
+    }
 }

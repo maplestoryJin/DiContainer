@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.mockito.internal.matchers.Not;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -170,14 +169,17 @@ class ContextTest {
             }
 
             @Test
-            void should_throw_exception_if_illegal_qualifier_given_to_instance() {
-                assertThrows(IllegalComponentException.class, () -> config.bind(TestComponent.class, instance, new TestLiteral()));
+            void should_bind_instance_without_qualifier_if_illegal_qualifier_given_to_instance() {
+                config.bind(TestComponent.class, instance, new TestLiteral());
+                assertTrue(config.getContext().get(ComponentRef.of(TestComponent.class)).isPresent());
 
             }
 
             @Test
             void should_throw_exception_if_illegal_qualifier_given_to_component() {
-                assertThrows(IllegalComponentException.class, () -> config.bind(TestComponent.class, InjectConstructor.class, new TestLiteral()));
+                ContextConfig.ContextConfigException exception = assertThrows(ContextConfig.ContextConfigException.class, () -> config.bind(TestComponent.class, InjectConstructor.class, new TestLiteral()));
+                assertEquals("Unqualified annotations: TestLiteral[] of interface com.tdd.di.TestComponent",
+                        exception.getMessage());
 
             }
         }
@@ -229,7 +231,9 @@ class ContextTest {
 
         @Test
         void should_throw_exception_if_multi_scope_provided() {
-            assertThrows(IllegalComponentException.class, () -> config.bind(TestComponent.class, NotSingleton.class, new SingletonLiteral(), new PooledLiteral()));
+            ContextConfig.ContextConfigException exception = assertThrows(ContextConfig.ContextConfigException.class, () -> config.bind(TestComponent.class, NotSingleton.class, new SingletonLiteral(), new PooledLiteral()));
+            assertEquals("Unqualified annotations: SingletonLiteral[] , PooledLiteral[] of class com.tdd.di.ContextTest$WithScope$NotSingleton",
+                    exception.getMessage());
         }
 
         @Singleton
@@ -240,13 +244,17 @@ class ContextTest {
 
         @Test
         void should_throw_exception_if_multi_scope_annotated() {
-            assertThrows(IllegalComponentException.class, () -> config.bind(TestComponent.class, MultiScopeAnnotation.class));
+            ContextConfig.ContextConfigException exception = assertThrows(ContextConfig.ContextConfigException.class, () -> config.bind(TestComponent.class, MultiScopeAnnotation.class));
+            assertEquals("Unqualified annotations: @jakarta.inject.Singleton() , @com.tdd.di.Pooled() of class com.tdd.di.ContextTest$WithScope$MultiScopeAnnotation",
+                    exception.getMessage());
         }
 
 
         @Test
         void should_throw_exception_if_scope_undefined() {
-            assertThrows(IllegalComponentException.class, () -> config.bind(TestComponent.class, NotSingleton.class, new PooledLiteral()));
+            ContextConfig.ContextConfigException exception = assertThrows(ContextConfig.ContextConfigException.class, () -> config.bind(TestComponent.class, NotSingleton.class, new PooledLiteral()));
+            assertEquals("Unknown scope: interface com.tdd.di.Pooled",
+                    exception.getMessage());
         }
 
         @Nested

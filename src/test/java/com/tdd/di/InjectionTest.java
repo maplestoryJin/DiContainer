@@ -132,7 +132,9 @@ class InjectionTest {
 
                 @Test
                 void should_throw_exception_if_multi_qualifiers_given() {
-                    assertThrows(IllegalComponentException.class, () -> new InjectionProvider<>(MultiQualifierInjectConstructor.class));
+                    InjectionProvider.ComponentError error = assertThrows(InjectionProvider.ComponentError.class, () -> new InjectionProvider<>(MultiQualifierInjectConstructor.class));
+                    assertEquals("Ambiguous qualifiers: @jakarta.inject.Named(\"ChosenOne\") , @com.tdd.di.Skywalker() on com.tdd.di.Dependency arg0 of class com.tdd.di.InjectionTest$ConstructorInjectionTest$Injection$WithQualifier$MultiQualifierInjectConstructor",
+                            error.getMessage());
                 }
 
                 @Test
@@ -151,8 +153,10 @@ class InjectionTest {
 
             @Test
             void should_throw_exception_if_component_is_abstract() {
-                assertThrows(IllegalComponentException.class, () ->
+                InjectionProvider.ComponentError error = assertThrows(InjectionProvider.ComponentError.class, () ->
                         new InjectionProvider<>(AbstractComponent.class));
+                assertEquals("Can not be abstract: class com.tdd.di.InjectionTest$ConstructorInjectionTest$IllegalInjectConstructor$AbstractComponent",
+                        error.getMessage());
             }
 
             static abstract class AbstractComponent implements TestComponent {
@@ -164,14 +168,18 @@ class InjectionTest {
 
             @Test
             void should_throw_exception_if_component_is_interface() {
-                assertThrows(IllegalComponentException.class, () ->
+                InjectionProvider.ComponentError error = assertThrows(InjectionProvider.ComponentError.class, () ->
                         new InjectionProvider<>(TestComponent.class));
+                assertEquals("Can not be abstract: interface com.tdd.di.TestComponent",
+                        error.getMessage());
             }
 
 
             @Test
             void should_throw_exception_if_multi_inject_constructors_provided() {
-                assertThrows(IllegalComponentException.class, () -> new InjectionProvider<>(MultiInjectConstructors.class));
+                InjectionProvider.ComponentError error = assertThrows(InjectionProvider.ComponentError.class, () -> new InjectionProvider<>(MultiInjectConstructors.class));
+                assertEquals("Ambiguous injectable constructors: class com.tdd.di.InjectionTest$ConstructorInjectionTest$IllegalInjectConstructor$MultiInjectConstructors",
+                        error.getMessage());
             }
 
 
@@ -189,7 +197,9 @@ class InjectionTest {
 
             @Test
             void should_throw_exception_if_no_default_constructor_nor_inject_constructor() {
-                assertThrows(IllegalComponentException.class, () -> new InjectionProvider<>(NoDefaultConstructorNorInjectConstructor.class));
+                InjectionProvider.ComponentError error = assertThrows(InjectionProvider.ComponentError.class, () -> new InjectionProvider<>(NoDefaultConstructorNorInjectConstructor.class));
+                assertEquals("No default constructors: class com.tdd.di.InjectionTest$ConstructorInjectionTest$IllegalInjectConstructor$NoDefaultConstructorNorInjectConstructor",
+                        error.getMessage());
             }
 
             static class NoDefaultConstructorNorInjectConstructor implements TestComponent {
@@ -298,7 +308,9 @@ class InjectionTest {
 
                 @Test
                 void should_throw_exception_if_multi_qualifiers_given() {
-                    assertThrows(IllegalComponentException.class, () -> new InjectionProvider<>(MultiQualifierInjectField.class));
+                    InjectionProvider.ComponentError error = assertThrows(InjectionProvider.ComponentError.class, () -> new InjectionProvider<>(MultiQualifierInjectField.class));
+                    assertEquals("Ambiguous qualifiers: @jakarta.inject.Named(\"ChosenOne\") , @com.tdd.di.Skywalker() on com.tdd.di.Dependency com.tdd.di.InjectionTest$FiledInjectionTest$Injection$WithQualifier$MultiQualifierInjectField.dependency of class com.tdd.di.InjectionTest$FiledInjectionTest$Injection$WithQualifier$MultiQualifierInjectField",
+                            error.getMessage());
                 }
 
             }
@@ -309,8 +321,10 @@ class InjectionTest {
         class IllegalInjectField {
             @Test
             void should_throw_exception_if_inject_field_is_final() {
-                assertThrows(IllegalComponentException.class, () ->
+                InjectionProvider.ComponentError error = assertThrows(InjectionProvider.ComponentError.class, () ->
                         new InjectionProvider<>(FinalFieldInject.class));
+                assertEquals("Injectable field can not be final: dependency in class com.tdd.di.InjectionTest$FiledInjectionTest$IllegalInjectField$FinalFieldInject",
+                        error.getMessage());
 
             }
 
@@ -487,7 +501,8 @@ class InjectionTest {
 
                 @Test
                 void should_throw_exception_if_multi_qualifiers_given() {
-                    assertThrows(IllegalComponentException.class, () -> new InjectionProvider<>(MultiQualifierInjectMethod.class));
+                    InjectionProvider.ComponentError error = assertThrows(InjectionProvider.ComponentError.class, () -> new InjectionProvider<>(MultiQualifierInjectMethod.class));
+                    assertEquals("Ambiguous qualifiers: @jakarta.inject.Named(\"ChosenOne\") , @com.tdd.di.Skywalker() on com.tdd.di.Dependency arg0 of class com.tdd.di.InjectionTest$MethodInjectionTest$Injection$WithQualifier$MultiQualifierInjectMethod", error.getMessage());
                 }
 
             }
@@ -497,8 +512,10 @@ class InjectionTest {
         class IllegalInjectMethod {
             @Test
             void should_throw_exception_if_inject_method_has_type_parameter() {
-                assertThrows(IllegalComponentException.class, () ->
+                InjectionProvider.ComponentError error = assertThrows(InjectionProvider.ComponentError.class, () ->
                         new InjectionProvider<>(TypeParameterInjectMethod.class));
+                assertEquals("Injectable method can not have type parameter: install in class com.tdd.di.InjectionTest$MethodInjectionTest$IllegalInjectMethod$TypeParameterInjectMethod",
+                        error.getMessage());
             }
 
             static class TypeParameterInjectMethod {

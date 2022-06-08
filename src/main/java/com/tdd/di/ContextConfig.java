@@ -6,10 +6,12 @@ import jakarta.inject.Scope;
 import jakarta.inject.Singleton;
 
 import java.lang.annotation.Annotation;
+import java.text.MessageFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static com.tdd.di.ContextConfig.ContextConfigException.illegalAnnotation;
 import static java.util.List.of;
 
 public class ContextConfig {
@@ -26,7 +28,7 @@ public class ContextConfig {
 
     public <Type> void bind(Class<Type> componentClass, Type instance, Annotation... qualifiers) {
         if (Arrays.stream(qualifiers).anyMatch(q -> !q.annotationType().isAnnotationPresent(Qualifier.class))) {
-            throw new IllegalComponentException();
+            bind(componentClass, instance);
         }
         for (Annotation qualifier : qualifiers) {
             bindInstance(componentClass, instance, qualifier);
@@ -37,14 +39,15 @@ public class ContextConfig {
         bind(componentClass, implementation, implementation.getAnnotations());
     }
 
-    public <Type, Implementation extends Type> void bind(Class<Type> componentClass, Class<Implementation> implementation, Annotation... annotations) {
+    public <Type, Implementation extends Type> void bind(Class<Type> type, Class<Implementation> implementation, Annotation... annotations) {
         Map<? extends Class<? extends Annotation>, List<Annotation>> annotationGroup = Arrays.stream(annotations).collect(Collectors.groupingBy(this::typeOf, Collectors.toList()));
-        if (annotationGroup.containsKey(Illegal.class)) throw new IllegalComponentException();
-        bind(componentClass, annotationGroup, createProvider(implementation, new InjectionProvider<>(implementation), annotationGroup.getOrDefault(Scope.class, List.of())));
+        if (annotationGroup.containsKey(Illegal.class))
+            throw illegalAnnotation(type, annotationGroup.get(Illegal.class));
+        bind(type, annotationGroup, createProvider(implementation, new InjectionProvider<>(implementation), annotationGroup.getOrDefault(Scope.class, List.of())));
     }
 
     private <Type> ComponentProvider<Type> createProvider(final Class<Type> implementation, final ComponentProvider<Type> injectProvider, final List<Annotation> scopes) {
-        if (scopes.size() > 1) throw new IllegalComponentException();
+        if (scopes.size() > 1) throw illegalAnnotation(implementation, scopes);
         return scopes.stream().findFirst().or(() -> scopeFrom(implementation)).map(s -> scopeProvider(s, injectProvider)).orElse(injectProvider);
     }
 
@@ -66,7 +69,8 @@ public class ContextConfig {
     }
 
     private <Type> ComponentProvider<Type> scopeProvider(Annotation scope, final ComponentProvider<Type> injectProvider) {
-        if (!scopes.containsKey(scope.annotationType())) throw new IllegalComponentException();
+        if (!scopes.containsKey(scope.annotationType()))
+            throw ContextConfigException.unknownScope(scope.annotationType());
         return (ComponentProvider<Type>) scopes.get(scope.annotationType()).create(injectProvider);
     }
 
@@ -121,4 +125,19 @@ public class ContextConfig {
         ComponentProvider<?> create(ComponentProvider<?> provider);
     }
 
+    static class ContextConfigException extends RuntimeException {
+        static ContextConfigException illegalAnnotation(Class<?> type, List<Annotation> annotations) {
+            return new ContextConfigException(MessageFormat.format("Unqualified annotations: {0} of {1}",
+                    String.join(" , ", annotations.stream().map(Object::toString).toList()), type));
+        }
+        static ContextConfigException unknownScope(Class<? extends Annotation> annotationType) {
+            return new ContextConfigException(MessageFormat.format("Unknown scope: {0}", annotationType));
+        }
+        static ContextConfigException duplicated(Component component) {
+            return new ContextConfigException(MessageFormat.format("Duplicated: {0}", component));
+        }
+        ContextConfigException(String message) {
+            super(message);
+        }
+    }
 }
