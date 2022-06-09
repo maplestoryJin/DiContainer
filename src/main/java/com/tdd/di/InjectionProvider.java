@@ -8,6 +8,8 @@ import java.lang.reflect.*;
 import java.text.MessageFormat;
 import java.util.*;
 import java.util.function.BiFunction;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.tdd.di.InjectionProvider.Injectable.of;
@@ -16,26 +18,38 @@ import static java.util.stream.Stream.concat;
 
 class InjectionProvider<T> implements ComponentProvider<T> {
     private final Injectable<Constructor<T>> injectConstructor;
-    private final List<Injectable<Field>> injectFields;
-    private final List<Injectable<Method>> injectMethods;
+    private Collection<Class<?>> superClasses;
+    private Map<Class<?>, List<Injectable<Method>>> injectMethods;
+    private Map<Class<?>, List<Injectable<Field>>> injectFields;
+    private List<ComponentRef<?>> dependencies;
 
     InjectionProvider(Class<T> component) {
         if (Modifier.isAbstract(component.getModifiers())) throw ComponentError.abstractComponent(component);
         injectConstructor = getInjectConstructor(component);
-        injectFields = getInjectFields(component);
-        injectMethods = getInjectMethods(component);
+        superClasses = allSuperClass(component);
+        var injectFields = getInjectFields(component);
+        var injectMethods = getInjectMethods(component);
 
-        if (accessibleObject(injectFields).anyMatch(f -> Modifier.isFinal(f.getModifiers()))) {
-            throw ComponentError.finalInjectFields(component, accessibleObject(injectFields).toList());
-        }
-        if (accessibleObject(injectMethods).anyMatch(InjectionProvider::hasTypeParameter)) {
-            throw ComponentError.injectMethodsWithTypeParameter(component, accessibleObject(injectMethods).toList());
-        }
+        this.injectMethods = groupByClass(injectMethods);
+        this.injectFields = groupByClass(injectFields);
+
+        dependencies = concat(concat(Stream.of(injectConstructor), injectFields.stream()),
+                injectMethods.stream())
+                .flatMap(injectable -> stream(injectable.required())).toList();
 
     }
 
-    private <Element extends AccessibleObject> Stream<Element> accessibleObject(final List<Injectable<Element>> injectables) {
-        return injectables.stream().map(Injectable::element);
+    private static <E extends AccessibleObject> Map<Class<?>, List<Injectable<E>>> groupByClass(List<Injectable<E>> injectMethods) {
+        return injectMethods.stream().collect(Collectors.groupingBy(i -> ((Member) i.element()).getDeclaringClass()));
+    }
+
+    private static List<Class<?>> allSuperClass(Class<?> component) {
+        List<Class<?>> result = new ArrayList<>();
+        for (Class superClass = component;
+             superClass != Object.class;
+             superClass = superClass.getSuperclass())
+            result.add(0, superClass);
+        return result;
     }
 
     record Injectable<Element extends AccessibleObject>(Element element, ComponentRef<?>[] required) {
@@ -44,10 +58,12 @@ class InjectionProvider<T> implements ComponentProvider<T> {
         }
 
         static <Element extends Executable> Injectable<Element> of(Element element) {
+            element.setAccessible(true);
             return new Injectable<>(element, stream(element.getParameters()).map(Injectable::toComponentRef).toArray(ComponentRef<?>[]::new));
         }
 
         static Injectable<Field> of(Field field) {
+            field.setAccessible(true);
             return new Injectable<>(field, new ComponentRef<?>[]{toComponentRef(field)});
         }
 
@@ -72,13 +88,14 @@ class InjectionProvider<T> implements ComponentProvider<T> {
     public T get(Context context) {
         try {
             T instance = this.injectConstructor.element().newInstance(injectConstructor.toDependencies(context));
-            for (Injectable<Field> injectField : injectFields) {
-                Field field = injectField.element();
-                field.set(instance, injectField.toDependencies(context)[0]);
-            }
-            for (Injectable<Method> injectMethod : injectMethods) {
-                Method method = injectMethod.element();
-                method.invoke(instance, injectMethod.toDependencies(context));
+            for (final Class<?> superClass : superClasses) {
+                for (Injectable<Field> injectField : injectFields.getOrDefault(superClass, List.of())) {
+                    injectField.element().set(instance, injectField.toDependencies(context)[0]);
+                }
+                for (Injectable<Method> injectMethod : injectMethods.getOrDefault(superClass, List.of())) {
+                    injectMethod.element().invoke(instance, injectMethod.toDependencies(context));
+                }
+
             }
             return instance;
         } catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
@@ -88,25 +105,26 @@ class InjectionProvider<T> implements ComponentProvider<T> {
 
     @Override
     public List<ComponentRef<?>> getDependencies() {
-        return concat(concat(Stream.of(injectConstructor), injectFields.stream()),
-                injectMethods.stream())
-                .flatMap(injectable -> stream(injectable.required())).toList();
+        return dependencies;
     }
 
 
     private static List<Injectable<Method>> getInjectMethods(Class<?> component) {
-        return InjectionProvider.<Method>traverse(component, (injectMethods1, current) -> injectable(current.getDeclaredMethods())
+        List<Injectable<Method>> injectables = InjectionProvider.<Method>traverse(component, (injectMethods1, current) -> injectable(current.getDeclaredMethods())
                 .filter(m -> isOverrideByInjectMethod(injectMethods1, m))
                 .filter(m -> isOverrideByNoInjectMethod(component, m))
                 .toList()).stream().map(Injectable::of).toList();
+
+        return check(component, injectables, InjectionProvider::hasTypeParameter, ComponentError::injectMethodsWithTypeParameter);
     }
 
     private static List<Injectable<Field>> getInjectFields(Class<?> component) {
-        return InjectionProvider.<Field>traverse(component, (fields, current) -> injectable(current.getDeclaredFields()).toList()).stream().map(Injectable::of).toList();
+        List<Injectable<Field>> injectables = InjectionProvider.<Field>traverse(component, (fields, current) -> injectable(current.getDeclaredFields()).toList()).stream().map(Injectable::of).toList();
+        return check(component, injectables, InjectionProvider::isFinal, ComponentError::finalInjectFields);
     }
 
     private static <T> Injectable<Constructor<T>> getInjectConstructor(Class<T> component) {
-        List<Constructor<?>> injectConstructors = injectable(component.getConstructors())
+        List<Constructor<?>> injectConstructors = injectable(component.getDeclaredConstructors())
                 .toList();
         if (injectConstructors.size() > 1) throw ComponentError.ambiguousInjectableConstructors(component);
         return of(defaultConstructor(component, injectConstructors));
@@ -125,13 +143,17 @@ class InjectionProvider<T> implements ComponentProvider<T> {
     }
 
 
-    private static <T extends AnnotatedElement> Stream<T> injectable(final T[] fields) {
-        return stream(fields).filter(f -> f.isAnnotationPresent(Inject.class));
+    private static <T extends AnnotatedElement> Stream<T> injectable(final T[] element) {
+        return stream(element).filter(f -> f.isAnnotationPresent(Inject.class));
     }
 
     private static boolean isOverride(final Method method, final Method other) {
-        return method.getName().equals(other.getName())
-                && Arrays.equals(method.getParameters(), other.getParameters());
+        boolean visible;
+        if (method.getDeclaringClass().getPackageName().equals(other.getDeclaringClass().getPackageName()))
+            visible = !Modifier.isPrivate(other.getModifiers()) && !Modifier.isPrivate(method.getModifiers());
+        else visible = (Modifier.isPublic(other.getModifiers()) || Modifier.isProtected(other.getModifiers()))
+                && (Modifier.isPublic(method.getModifiers()) || Modifier.isProtected(method.getModifiers()));
+        return visible && other.getName().equals(method.getName()) && Arrays.equals(other.getParameterTypes(), method.getParameterTypes());
     }
 
     private static boolean isOverrideByNoInjectMethod(final Class<?> component, final Method method) {
@@ -155,8 +177,21 @@ class InjectionProvider<T> implements ComponentProvider<T> {
         return injectMethods;
     }
 
+    private static <E extends AccessibleObject> List<Injectable<E>> check(Class<?> component, List<Injectable<E>> injectables, Predicate<E> predicate, BiFunction<Class<?>, Collection<E>, ComponentError> a) {
+        Collection<E> elements = injectables.stream().map(Injectable::element).toList();
+        if (elements.stream().anyMatch(predicate)) {
+            throw a.apply(component, elements);
+        }
+        return injectables;
+    }
+
     private static boolean hasTypeParameter(final Method m) {
         return m.getTypeParameters().length > 0;
+    }
+
+
+    private static boolean isFinal(Field f) {
+        return Modifier.isFinal(f.getModifiers());
     }
 
 
