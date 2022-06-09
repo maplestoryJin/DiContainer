@@ -143,7 +143,7 @@ public class ContextConfig {
 
     private void checkDependency(Component component, Stack<Component> visiting, ComponentRef dependency) {
         if (!components.containsKey(dependency.component()))
-            throw unsatisfiedResolution(dependency.component(), component);
+            throw unsatisfiedResolution(component, dependency.component());
         if (!dependency.isContainer()) {
             if (visiting.contains(dependency.component()))
                 throw circularDependencies(visiting, dependency.component());
