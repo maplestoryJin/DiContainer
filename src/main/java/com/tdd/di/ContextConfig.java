@@ -8,12 +8,14 @@ import jakarta.inject.Singleton;
 import java.lang.annotation.Annotation;
 import java.text.MessageFormat;
 import java.util.*;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.tdd.di.ContextConfig.ContextConfigError.circularDependencies;
 import static com.tdd.di.ContextConfig.ContextConfigError.unsatisfiedResolution;
 import static com.tdd.di.ContextConfig.ContextConfigException.illegalAnnotation;
+import static java.util.Arrays.stream;
 import static java.util.List.of;
 import static java.util.stream.Collectors.joining;
 
@@ -21,68 +23,94 @@ public class ContextConfig {
     private final Map<Component, ComponentProvider<?>> components = new HashMap<>();
     private final Map<Class<?>, ScopeProvider> scopes = new HashMap<>();
 
-    public <Type> void bind(Class<Type> componentClass, Type instance) {
-        bindInstance(componentClass, instance, null);
-    }
-
     public ContextConfig() {
         scope(Singleton.class, SingletonProvider::new);
     }
 
-    public <Type> void bind(Class<Type> componentClass, Type instance, Annotation... qualifiers) {
-        if (Arrays.stream(qualifiers).anyMatch(q -> !q.annotationType().isAnnotationPresent(Qualifier.class))) {
-            bind(componentClass, instance);
+    public <Type> void instance(Class<Type> type, Type instance) {
+        bind(new Component(type, null), (ComponentProvider<Object>) context -> instance);
+    }
+
+    public <Type> void instance(Class<Type> type, Type instance, Annotation... qualifiers) {
+        bindInstance(type, instance, qualifiers);
+    }
+
+    private <Type> void bindInstance(Class<Type> type, Type instance, Annotation[] annotations) {
+        Bindings bindings = new Bindings(type, annotations);
+        bind(type, bindings.qualifiers(), context -> instance);
+    }
+
+    public <Type, Implementation extends Type> void component(Class<Type> type, Class<Implementation> implementation, Annotation... annotations) {
+        bindComponent(type, implementation, annotations);
+    }
+
+    private <Type, Implementation extends Type> void bindComponent(Class<Type> type, Class<Implementation> implementation, Annotation[] annotations) {
+        Bindings bindings = new Bindings(implementation, annotations);
+        bind(type, bindings.qualifiers(), (ComponentProvider<Implementation>) bindings.provider(this::scopeProvider));
+    }
+
+    private <Type, Implementation extends Type> void bind(final Class<Type> type, List<Annotation> qualifiers, final ComponentProvider<Implementation> provider) {
+        if (qualifiers.isEmpty()) bind(new Component(type, null), provider);
+        for (Annotation qualifier : qualifiers) bind(new Component(type, qualifier), provider);
+    }
+
+    static class Bindings {
+        private Class<?> type;
+        private Map<Class<?>, List<Annotation>> group;
+
+        public Bindings(Class<?> type, Annotation... annotations) {
+            this.type = type;
+            group = parse(annotations);
         }
-        for (Annotation qualifier : qualifiers) {
-            bindInstance(componentClass, instance, qualifier);
+
+
+        private Map<Class<?>, List<Annotation>> parse(Annotation[] annotations) {
+            Map<Class<?>, List<Annotation>> annotationGroup = stream(annotations).collect(Collectors.groupingBy(Bindings::typeOf));
+            if (annotationGroup.containsKey(Illegal.class))
+                throw illegalAnnotation(type, annotationGroup.get(Illegal.class));
+            return annotationGroup;
+        }
+
+        private static Class<? extends Annotation> typeOf(final Annotation annotation) {
+            return Stream.of(Qualifier.class, Scope.class).filter(a -> annotation.annotationType().isAnnotationPresent(a)).findFirst().orElse(Illegal.class);
+        }
+
+        List<Annotation> qualifiers() {
+            return group.getOrDefault(Qualifier.class, List.of());
+        }
+
+        private Optional<Annotation> scope() {
+            List<Annotation> scopes = group.getOrDefault(Scope.class, scopeFrom(type));
+            if (scopes.size() > 1) throw illegalAnnotation(type, scopes);
+            return scopes.stream().findFirst();
+        }
+
+        private static <Type> List<Annotation> scopeFrom(final Class<Type> implementation) {
+            return stream(implementation.getAnnotations()).filter(a -> a.annotationType().isAnnotationPresent(Scope.class)).toList();
+        }
+
+        private ComponentProvider<?> provider(BiFunction<Annotation, ComponentProvider<?>, ComponentProvider<?>> scoped) {
+            ComponentProvider<?> injectProvider = new InjectionProvider<>(type);
+            return scope().<ComponentProvider<?>>map(s -> scoped.apply(s, injectProvider)).orElse(injectProvider);
         }
     }
 
-    public <Type, Implementation extends Type> void bind(Class<Type> componentClass, Class<Implementation> implementation) {
-        bind(componentClass, implementation, implementation.getAnnotations());
-    }
-
-    public <Type, Implementation extends Type> void bind(Class<Type> type, Class<Implementation> implementation, Annotation... annotations) {
-        Map<? extends Class<? extends Annotation>, List<Annotation>> annotationGroup = Arrays.stream(annotations).collect(Collectors.groupingBy(this::typeOf, Collectors.toList()));
-        if (annotationGroup.containsKey(Illegal.class))
-            throw illegalAnnotation(type, annotationGroup.get(Illegal.class));
-        bind(type, annotationGroup, createProvider(implementation, new InjectionProvider<>(implementation), annotationGroup.getOrDefault(Scope.class, List.of())));
-    }
-
-    private <Type> ComponentProvider<Type> createProvider(final Class<Type> implementation, final ComponentProvider<Type> injectProvider, final List<Annotation> scopes) {
-        if (scopes.size() > 1) throw illegalAnnotation(implementation, scopes);
-        return scopes.stream().findFirst().or(() -> scopeFrom(implementation)).map(s -> scopeProvider(s, injectProvider)).orElse(injectProvider);
-    }
-
-    private <Type, Implementation extends Type> void bind(final Class<Type> componentClass, final Map<? extends Class<? extends Annotation>, List<Annotation>> annotationGroup, final ComponentProvider<Implementation> provider) {
-        List<Annotation> qualifiers = annotationGroup.getOrDefault(Qualifier.class, List.of());
-        if (qualifiers.isEmpty()) bindComponent(componentClass, null, provider);
-        for (Annotation qualifier : qualifiers) bindComponent(componentClass, qualifier, provider);
-    }
-
-    private <Type> Optional<Annotation> scopeFrom(final Class<Type> implementation) {
-        return Arrays.stream(implementation.getAnnotations()).filter(a -> a.annotationType().isAnnotationPresent(Scope.class)).findFirst();
-    }
-
-    private Class<? extends Annotation> typeOf(final Annotation annotation) {
-        return Stream.of(Qualifier.class, Scope.class).filter(a -> annotation.annotationType().isAnnotationPresent(a)).findFirst().orElse(Illegal.class);
+    public void from(final Config config) {
+//        new DSL(config).bind();
     }
 
     private @interface Illegal {
     }
 
-    private <Type> ComponentProvider<Type> scopeProvider(Annotation scope, final ComponentProvider<Type> injectProvider) {
+    private ComponentProvider<?> scopeProvider(Annotation scope, final ComponentProvider<?> injectProvider) {
         if (!scopes.containsKey(scope.annotationType()))
             throw ContextConfigException.unknownScope(scope.annotationType());
-        return (ComponentProvider<Type>) scopes.get(scope.annotationType()).create(injectProvider);
+        return scopes.get(scope.annotationType()).create(injectProvider);
     }
 
-    private <Type> void bindInstance(Class<Type> componentClass, Type instance, Annotation qualifier) {
-        components.put(new Component(componentClass, qualifier), context -> instance);
-    }
-
-    private <Type, Implementation extends Type> void bindComponent(Class<Type> componentClass, Annotation qualifier, final ComponentProvider<Implementation> provider) {
-        components.put(new Component(componentClass, qualifier), provider);
+    private <Type, Implementation extends Type> void bind(Component component, final ComponentProvider<Implementation> provider) {
+        if (components.containsKey(component)) throw ContextConfigException.duplicated(component);
+        components.put(component, provider);
     }
 
     public <Type> void scope(final Class<Type> scope, final ScopeProvider provider) {
@@ -117,7 +145,7 @@ public class ContextConfig {
             throw unsatisfiedResolution(dependency.component(), component);
         if (!dependency.isContainer()) {
             if (visiting.contains(dependency.component()))
-                throw circularDependencies(visiting,dependency.component());
+                throw circularDependencies(visiting, dependency.component());
             visiting.push(dependency.component());
             checkDependencies(dependency.component(), visiting);
             visiting.pop();
@@ -161,4 +189,55 @@ public class ContextConfig {
             super(message);
         }
     }
+
+//    private class DSL {
+//        private final Config config;
+//
+//        public DSL(final Config config) {
+//            this.config = config;
+//        }
+//
+//        public void bind() {
+//            for (Declaration declaration : declarations()) {
+//                declaration.value().ifPresentOrElse(declaration::bindInstance, declaration::bindComponent);
+//            }
+//        }
+//
+//        private List<Declaration> declarations() {
+//            return null;
+//        }
+//
+//        private class Declaration {
+//            private Field field;
+//
+//            Declaration(Field field) {
+//                this.field = field;
+//            }
+//
+//            void bindInstance(Object instance) {
+//                ContextConfig.this.bind(type(), instance, annotations());
+//            }
+//
+//            void bindComponent() {
+//                ContextConfig.this.bind(type(), field.getType(), annotations());
+//            }
+//
+//            private Optional<Object> value() {
+//                try {
+//                    return Optional.ofNullable(field.get(config));
+//                } catch (IllegalAccessException e) {
+//                    throw new RuntimeException(e);
+//                }
+//            }
+//
+//            private Class<?> type() {
+//                Config.Export export = field.getAnnotation(Config.Export.class);
+//                return export != null ? export.value() : field.getType();
+//            }
+//
+//            private Annotation[] annotations() {
+//                return stream(field.getAnnotations()).filter(a -> a.annotationType() != Config.Export.class).toArray(Annotation[]::new);
+//            }
+//        }
+//    }
 }
