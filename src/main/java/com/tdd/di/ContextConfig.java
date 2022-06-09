@@ -6,6 +6,7 @@ import jakarta.inject.Scope;
 import jakarta.inject.Singleton;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
 import java.text.MessageFormat;
 import java.util.*;
 import java.util.function.BiFunction;
@@ -35,7 +36,7 @@ public class ContextConfig {
         bindInstance(type, instance, qualifiers);
     }
 
-    private <Type> void bindInstance(Class<Type> type, Type instance, Annotation[] annotations) {
+    private void bindInstance(Class<?> type, Object instance, Annotation[] annotations) {
         Bindings bindings = new Bindings(type, annotations);
         bind(type, bindings.qualifiers(), context -> instance);
     }
@@ -44,12 +45,12 @@ public class ContextConfig {
         bindComponent(type, implementation, annotations);
     }
 
-    private <Type, Implementation extends Type> void bindComponent(Class<Type> type, Class<Implementation> implementation, Annotation[] annotations) {
+    private void bindComponent(Class<?> type, Class<?> implementation, Annotation[] annotations) {
         Bindings bindings = new Bindings(implementation, annotations);
-        bind(type, bindings.qualifiers(), (ComponentProvider<Implementation>) bindings.provider(this::scopeProvider));
+        bind(type, bindings.qualifiers(), bindings.provider(this::scopeProvider));
     }
 
-    private <Type, Implementation extends Type> void bind(final Class<Type> type, List<Annotation> qualifiers, final ComponentProvider<Implementation> provider) {
+    private <Type> void bind(final Class<Type> type, List<Annotation> qualifiers, final ComponentProvider<?> provider) {
         if (qualifiers.isEmpty()) bind(new Component(type, null), provider);
         for (Annotation qualifier : qualifiers) bind(new Component(type, qualifier), provider);
     }
@@ -96,7 +97,7 @@ public class ContextConfig {
     }
 
     public void from(final Config config) {
-//        new DSL(config).bind();
+        new DSL(config).bind();
     }
 
     private @interface Illegal {
@@ -190,54 +191,54 @@ public class ContextConfig {
         }
     }
 
-//    private class DSL {
-//        private final Config config;
-//
-//        public DSL(final Config config) {
-//            this.config = config;
-//        }
-//
-//        public void bind() {
-//            for (Declaration declaration : declarations()) {
-//                declaration.value().ifPresentOrElse(declaration::bindInstance, declaration::bindComponent);
-//            }
-//        }
-//
-//        private List<Declaration> declarations() {
-//            return null;
-//        }
-//
-//        private class Declaration {
-//            private Field field;
-//
-//            Declaration(Field field) {
-//                this.field = field;
-//            }
-//
-//            void bindInstance(Object instance) {
-//                ContextConfig.this.bind(type(), instance, annotations());
-//            }
-//
-//            void bindComponent() {
-//                ContextConfig.this.bind(type(), field.getType(), annotations());
-//            }
-//
-//            private Optional<Object> value() {
-//                try {
-//                    return Optional.ofNullable(field.get(config));
-//                } catch (IllegalAccessException e) {
-//                    throw new RuntimeException(e);
-//                }
-//            }
-//
-//            private Class<?> type() {
-//                Config.Export export = field.getAnnotation(Config.Export.class);
-//                return export != null ? export.value() : field.getType();
-//            }
-//
-//            private Annotation[] annotations() {
-//                return stream(field.getAnnotations()).filter(a -> a.annotationType() != Config.Export.class).toArray(Annotation[]::new);
-//            }
-//        }
-//    }
+    private class DSL {
+        private final Config config;
+
+        public DSL(final Config config) {
+            this.config = config;
+        }
+
+        public void bind() {
+            for (Declaration declaration : declarations()) {
+                declaration.value().ifPresentOrElse(declaration::bindInstance, declaration::bindComponent);
+            }
+        }
+
+        private List<Declaration> declarations() {
+            return stream(config.getClass().getDeclaredFields()).filter(f -> !f.isSynthetic()).map(Declaration::new).toList();
+        }
+
+        private class Declaration {
+            private Field field;
+
+            Declaration(Field field) {
+                this.field = field;
+            }
+
+            void bindInstance(Object instance) {
+                ContextConfig.this.bindInstance(type(), instance, annotations());
+            }
+
+            void bindComponent() {
+                ContextConfig.this.bindComponent(type(), field.getType(), annotations());
+            }
+
+            private Optional<Object> value() {
+                try {
+                    return Optional.ofNullable(field.get(config));
+                } catch (IllegalAccessException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+
+            private Class<?> type() {
+                Config.Export export = field.getAnnotation(Config.Export.class);
+                return export != null ? export.value() : field.getType();
+            }
+
+            private Annotation[] annotations() {
+                return stream(field.getAnnotations()).filter(a -> a.annotationType() != Config.Export.class).toArray(Annotation[]::new);
+            }
+        }
+    }
 }

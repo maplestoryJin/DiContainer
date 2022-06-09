@@ -654,7 +654,6 @@ class ContextTest {
     }
 
     @Nested
-    @Disabled
     class DSL {
         interface Api {
 
@@ -673,6 +672,111 @@ class ContextTest {
             Context context = config.getContext();
             Implementation implementation = context.get(ComponentRef.of(Implementation.class)).get();
             assertSame(instance, implementation);
+        }
+
+        @Test
+        void should_bind_component_as_its_own_type() {
+            config.from(new Config() {
+                Implementation implementation;
+            });
+            Context context = config.getContext();
+            assertTrue(context.get(ComponentRef.of(Implementation.class)).isPresent());
+        }
+
+        @Test
+        void should_bind_instance_using_export_type() {
+            Implementation instance = new Implementation();
+            config.from(new Config() {
+                @Export(Api.class)
+                Implementation implementation = instance;
+            });
+
+            Context context = config.getContext();
+            assertSame(instance, context.get(ComponentRef.of(Api.class)).get());
+        }
+
+        @Test
+        void should_bind_component_using_export_type() {
+            config.from(new Config() {
+                @Export(Api.class)
+                Implementation implementation;
+            });
+
+            Context context = config.getContext();
+            assertTrue(context.get(ComponentRef.of(Api.class)).isPresent());
+        }
+
+        @Test
+        void should_bind_instance_with_qualifier() {
+            Implementation instance = new Implementation();
+            config.from(new Config() {
+                @Skywalker
+                Api implementation = instance;
+            });
+
+            Context context = config.getContext();
+            assertSame(instance, context.get(ComponentRef.of(Api.class, new SkywalkerLiteral())).get());
+        }
+
+        @Test
+        void should_bind_instance_with_provider() {
+            Api instance = new Implementation();
+            config.from(new Config() {
+                Api implementation = instance;
+            });
+
+
+            Context context = config.getContext();
+            Provider<Api> provider = context.get(new ComponentRef<Provider<Api>>() {
+            }).get();
+            assertSame(instance, provider.get());
+        }
+
+
+        @Test
+        void should_bind_instance_with_scope() {
+            Api instance = new Implementation();
+            config.from(new Config() {
+                @Singleton
+                Api implementation = instance;
+            });
+
+            Context context = config.getContext();
+            assertSame(context.get(ComponentRef.of(Api.class)).get(), context.get(ComponentRef.of(Api.class)).get());
+        }
+
+        @Test
+        void should_bind_component_with_qualifier() {
+            config.from(new Config() {
+                @Skywalker
+                Implementation implementation;
+            });
+
+            Context context = config.getContext();
+            assertTrue(context.get(ComponentRef.of(Implementation.class, new SkywalkerLiteral())).isPresent());
+        }
+
+        @Test
+        void should_bind_component_with_provider() {
+            config.from(new Config() {
+                Implementation implementation;
+            });
+
+            Context context = config.getContext();
+            Provider<Implementation> provider = context.get(new ComponentRef<Provider<Implementation>>() {
+            }).get();
+            assertNotNull(provider.get());
+        }
+
+        @Test
+        void should_bind_component_with_scope() {
+            config.from(new Config() {
+                @Singleton
+                Implementation implementation;
+            });
+
+            Context context = config.getContext();
+            assertSame(context.get(ComponentRef.of(Implementation.class)).get(), context.get(ComponentRef.of(Implementation.class)).get());
         }
     }
 
