@@ -23,36 +23,37 @@ import static java.util.stream.Collectors.joining;
 public class ContextConfig {
     private final Map<Component, ComponentProvider<?>> components = new HashMap<>();
     private final Map<Class<?>, ScopeProvider> scopes = new HashMap<>();
+    private final List<Component> staticsComponents = new ArrayList<>();
 
     public ContextConfig() {
         scope(Singleton.class, SingletonProvider::new);
     }
 
     public <Type> void instance(Class<Type> type, Type instance) {
-        bind(new Component(type, null), (ComponentProvider<Object>) context -> instance);
+        bind(new Component(type, null), (ComponentProvider<Object>) context -> instance, false);
     }
 
     public <Type> void instance(Class<Type> type, Type instance, Annotation... qualifiers) {
-        bindInstance(type, instance, qualifiers);
+        bindInstance(type, instance, qualifiers, false);
     }
 
-    private void bindInstance(Class<?> type, Object instance, Annotation[] annotations) {
+    private void bindInstance(Class<?> type, Object instance, Annotation[] annotations, boolean statics) {
         Bindings bindings = new Bindings(type, annotations);
-        bind(type, bindings.qualifiers(), context -> instance);
+        bind(type, bindings.qualifiers(), context -> instance, statics);
     }
 
     public <Type, Implementation extends Type> void component(Class<Type> type, Class<Implementation> implementation, Annotation... annotations) {
-        bindComponent(type, implementation, annotations);
+        bindComponent(type, implementation, annotations, false);
     }
 
-    private void bindComponent(Class<?> type, Class<?> implementation, Annotation[] annotations) {
+    private void bindComponent(Class<?> type, Class<?> implementation, Annotation[] annotations, boolean statics) {
         Bindings bindings = new Bindings(implementation, annotations);
-        bind(type, bindings.qualifiers(), bindings.provider(this::scopeProvider));
+        bind(type, bindings.qualifiers(), bindings.provider(this::scopeProvider), statics);
     }
 
-    private <Type> void bind(final Class<Type> type, List<Annotation> qualifiers, final ComponentProvider<?> provider) {
-        if (qualifiers.isEmpty()) bind(new Component(type, null), provider);
-        for (Annotation qualifier : qualifiers) bind(new Component(type, qualifier), provider);
+    private <Type> void bind(final Class<Type> type, List<Annotation> qualifiers, final ComponentProvider<?> provider, boolean statics) {
+        if (qualifiers.isEmpty()) bind(new Component(type, null), provider, statics);
+        for (Annotation qualifier : qualifiers) bind(new Component(type, qualifier), provider, statics);
     }
 
     static class Bindings {
@@ -109,8 +110,9 @@ public class ContextConfig {
         return scopes.get(scope.annotationType()).create(injectProvider);
     }
 
-    private <Type, Implementation extends Type> void bind(Component component, final ComponentProvider<Implementation> provider) {
+    private <Type, Implementation extends Type> void bind(Component component, final ComponentProvider<Implementation> provider, boolean statics) {
         if (components.containsKey(component)) throw ContextConfigException.duplicated(component);
+        if (statics) staticsComponents.add(component);
         components.put(component, provider);
     }
 
@@ -120,9 +122,8 @@ public class ContextConfig {
 
 
     public Context getContext() {
-        components.keySet().forEach(component -> checkDependencies(component, new Stack<>()));
 
-        return new Context() {
+        Context context = new Context() {
 
             @Override
             public <ComponentType> Optional<ComponentType> get(ComponentRef<ComponentType> componentRef) {
@@ -135,6 +136,17 @@ public class ContextConfig {
 
             }
         };
+
+        components.keySet().forEach(component -> checkDependencies(component, new Stack<>()));
+        injectStaticMembers(context);
+        return context;
+    }
+
+    private void injectStaticMembers(Context context) {
+        for (final Component component : staticsComponents) {
+            Optional.ofNullable(components.get(component))
+                    .ifPresent(p -> p.statics(context));
+        }
     }
 
     public void checkDependencies(Component component, Stack<Component> visiting) {
@@ -216,11 +228,11 @@ public class ContextConfig {
             }
 
             void bindInstance(Object instance) {
-                ContextConfig.this.bindInstance(type(), instance, annotations());
+                ContextConfig.this.bindInstance(type(), instance, annotations(), statics());
             }
 
             void bindComponent() {
-                ContextConfig.this.bindComponent(type(), field.getType(), annotations());
+                ContextConfig.this.bindComponent(type(), field.getType(), annotations(), statics());
             }
 
             private Optional<Object> value() {
@@ -235,9 +247,13 @@ public class ContextConfig {
                 Config.Export export = field.getAnnotation(Config.Export.class);
                 return export != null ? export.value() : field.getType();
             }
+            private boolean statics() {
+                Config.Static aStatic = field.getAnnotation(Config.Static.class);
+                return aStatic != null;
+            }
 
             private Annotation[] annotations() {
-                return stream(field.getAnnotations()).filter(a -> a.annotationType() != Config.Export.class).toArray(Annotation[]::new);
+                return stream(field.getAnnotations()).filter(a -> a.annotationType() != Config.Export.class && a.annotationType() != Config.Static.class).toArray(Annotation[]::new);
             }
         }
     }

@@ -88,17 +88,37 @@ class InjectionProvider<T> implements ComponentProvider<T> {
     public T get(Context context) {
         try {
             T instance = this.injectConstructor.element().newInstance(injectConstructor.toDependencies(context));
-            for (final Class<?> superClass : superClasses) {
-                for (Injectable<Field> injectField : injectFields.getOrDefault(superClass, List.of())) {
-                    injectField.element().set(instance, injectField.toDependencies(context)[0]);
-                }
-                for (Injectable<Method> injectMethod : injectMethods.getOrDefault(superClass, List.of())) {
-                    injectMethod.element().invoke(instance, injectMethod.toDependencies(context));
-                }
-
-            }
+            injectMembers(context, instance, false);
             return instance;
         } catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void injectMembers(Context context, T instance, boolean statics) throws IllegalAccessException, InvocationTargetException {
+        for (final Class<?> superClass : superClasses) {
+            for (Injectable<Field> injectField : injectMembers(superClass, injectFields, f -> statics == isStatic(f))) {
+                injectField.element().set(instance, injectField.toDependencies(context)[0]);
+            }
+            for (Injectable<Method> injectMethod : injectMembers(superClass, injectMethods, f -> statics == isStatic(f))) {
+                injectMethod.element().invoke(instance, injectMethod.toDependencies(context));
+            }
+        }
+    }
+
+    private <E extends AccessibleObject> boolean isStatic(Injectable<E> f) {
+        return Modifier.isStatic(((Member) f.element()).getModifiers());
+    }
+
+    private <E extends AccessibleObject> List<Injectable<E>> injectMembers(Class<?> superClass, Map<Class<?>, List<Injectable<E>>> members, Predicate<Injectable<E>> predicate) {
+        return members.getOrDefault(superClass, List.of()).stream().filter(predicate).toList();
+    }
+
+    @Override
+    public void statics(Context context) {
+        try {
+            injectMembers(context, null, true);
+        } catch (IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
     }

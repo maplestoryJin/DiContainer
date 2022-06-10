@@ -15,4 +15,10 @@ public interface Config {
     @interface Export {
         Class<?> value();
     }
+
+    @Documented
+    @Retention(RUNTIME)
+    @Target({ElementType.FIELD})
+    @interface Static {
+    }
 }

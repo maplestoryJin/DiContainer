@@ -31,13 +31,19 @@ public class JakartaTCK {
             SpareTire spare;
 
             FuelTank fuelTank;
+
+            @Static
             SpareTire spareTire;
             Cupholder cupholder;
+
+            @Static
+            Convertible convertible;
+
 
         });
 
         Car car = config.getContext().get(ComponentRef.of(Car.class)).get();
-        return Tck.testsFor(car, false, true);
+        return Tck.testsFor(car, true, true);
     }
 
 
