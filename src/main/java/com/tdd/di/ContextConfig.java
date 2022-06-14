@@ -33,8 +33,8 @@ public class ContextConfig {
         bind(new Component(type, null), (ComponentProvider<Object>) context -> instance, false);
     }
 
-    public <Type> void instance(Class<Type> type, Type instance, Annotation... qualifiers) {
-        bindInstance(type, instance, qualifiers, false);
+    public <Type> void instance(Class<Type> type, Type instance, Annotation... annotations) {
+        bindInstance(type, instance, annotations, false);
     }
 
     private void bindInstance(Class<?> type, Object instance, Annotation[] annotations, boolean statics) {
